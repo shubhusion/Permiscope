@@ -1,0 +1,71 @@
+[
+  {
+    "id": "Y2xpLXVzZXI6cmVhZF9maWxlOnsicGF0aCI6IkM6L1NhZmUvZGFzaGJvYXJkX3Rlc3QudHh0In0=",
+    "agentId": "cli-user",
+    "actionName": "read_file",
+    "params": {
+      "path": "C:/Safe/dashboard_test.txt"
+    },
+    "status": "APPROVED",
+    "timestamp": "2026-02-01T14:30:04.784Z"
+  },
+  {
+    "id": "Y2xpLXVzZXI6cmVhZF9maWxlOnsicGF0aCI6IkM6L1NhZmUvZmluYWxfdGVzdC50eHQifQ==",
+    "agentId": "cli-user",
+    "actionName": "read_file",
+    "params": {
+      "path": "C:/Safe/final_test.txt"
+    },
+    "status": "APPROVED",
+    "timestamp": "2026-02-01T14:36:50.062Z"
+  },
+  {
+    "id": "cmVhbC1hZ2VudC12MTpyZWFkX2ZpbGU6eyJwYXRoIjoiRDpcXEdpdGh1YlxcUGVybWlzY29wZVxcdGVtcF90ZXN0X2Vudlxcc2VjcmV0X2NvbmZpZy55YW1sIn0=",
+    "agentId": "real-agent-v1",
+    "actionName": "read_file",
+    "params": {
+      "path": "D:\\Github\\Permiscope\\temp_test_env\\secret_config.yaml"
+    },
+    "status": "APPROVED",
+    "timestamp": "2026-02-01T14:46:27.154Z"
+  },
+  {
+    "id": "ZGV2b3BzLWJvdDp3cml0ZV9maWxlOnsicGF0aCI6IkQ6XFxHaXRodWJcXFBlcm1pc2NvcGVcXHRlbXBfdGVzdF9lbnZcXG5naW54LmNvbmYiLCJjb250ZW50Ijoid29ya2VyX3Byb2Nlc3NlcyA0OyJ9",
+    "agentId": "devops-bot",
+    "actionName": "write_file",
+    "params": {
+      "path": "D:\\Github\\Permiscope\\temp_test_env\\nginx.conf",
+      "content": "worker_processes 4;"
+    },
+    "status": "APPROVED",
+    "timestamp": "2026-02-01T14:58:01.419Z"
+  },
+  {
+    "id": "c2FmZS1hZ2VudDpzZW5zaXRpdmVfb3A6eyJkYXRhIjoxfQ==",
+    "agentId": "safe-agent",
+    "actionName": "sensitive_op",
+    "params": {
+      "data": 1
+    },
+    "status": "APPROVED",
+    "timestamp": "2026-02-02T04:52:09.903Z"
+  },
+  {
+    "id": "c2FmZS1hZ2VudDp3cm9uZ19hY3Rpb246e30=",
+    "agentId": "safe-agent",
+    "actionName": "wrong_action",
+    "params": {},
+    "status": "APPROVED",
+    "timestamp": "2026-02-02T04:54:20.113Z"
+  },
+  {
+    "id": "c2FmZS1hZ2VudDpjaGFyZ2VfY2FyZDp7ImFtb3VudCI6NTB9",
+    "agentId": "safe-agent",
+    "actionName": "charge_card",
+    "params": {
+      "amount": 50
+    },
+    "status": "APPROVED",
+    "timestamp": "2026-02-02T13:22:50.189Z"
+  }
+]

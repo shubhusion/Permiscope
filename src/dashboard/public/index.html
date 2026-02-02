@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permiscope Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1, h2 { color: #2c3e50; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .log-entry { border-bottom: 1px solid #eee; padding: 10px 0; font-family: monospace; font-size: 0.9em; }
+        .log-fail { color: #e74c3c; }
+        .log-success { color: #27ae60; }
+        .approval-item { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+        .btn { padding: 5px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-right: 5px; }
+        .btn-approve { background: #27ae60; }
+        .btn-reject { background: #e74c3c; }
+        code { background: #eee; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Permiscope Dashboard</h1>
+    
+    <div class="container">
+        <!-- Approvals Column -->
+        <div class="card">
+            <h2>🚨 Pending Approvals</h2>
+            <div id="approvalsList">Loading...</div>
+        </div>
+
+        <!-- Logs Column -->
+        <div class="card">
+            <h2>📜 Audit Log Stream</h2>
+            <div id="logsList">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        async function fetchApprovals() {
+            const res = await fetch(`${API_URL}/approvals`);
+            const data = await res.json();
+            const container = document.getElementById('approvalsList');
+            
+            if (data.length === 0) {
+                container.innerHTML = '<p>No approvals found.</p>';
+                return;
+            }
+
+            container.innerHTML = data.map(item => {
+                if (item.status !== 'PENDING') return '';
+                return `
+                <div class="approval-item">
+                    <p><strong>Agent:</strong> ${item.agentId}</p>
+                    <p><strong>Action:</strong> <code>${item.actionName}</code></p>
+                    <p><strong>Params:</strong> ${JSON.stringify(item.params)}</p>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-approve" onclick="decide('${item.id}', 'APPROVED')">Approve</button>
+                        <button class="btn btn-reject" onclick="decide('${item.id}', 'REJECTED')">Reject</button>
+                    </div>
+                </div>`;
+            }).join('') || '<p>No pending approvals.</p>';
+        }
+
+        async function fetchLogs() {
+            const res = await fetch(`${API_URL}/logs`);
+            const data = await res.json();
+            const container = document.getElementById('logsList');
+            
+            container.innerHTML = data.map(log => {
+                const isBlocked = log.decision === 'BLOCK';
+                const colorClass = isBlocked ? 'log-fail' : 'log-success';
+                return `
+                <div class="log-entry ${colorClass}">
+                    [${new Date(log.timestamp).toLocaleTimeString()}] 
+                    <strong>${log.decision}</strong> 
+                    ${log.action.actionName} 
+                    (${log.agentId})
+                </div>`;
+            }).join('');
+        }
+
+        async function decide(id, status) {
+            await fetch(`${API_URL}/approvals/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            fetchApprovals();
+            // Approving triggers a write to file, waiting for agent to poll... 
+            // Wait, does our Gateway poll?
+            // The current Gateway implementation does NOT poll. It blocks or asks immediately.
+            // For V2 dashboard, the Gateway behavior needs to change to "Wait for External Approval"
+            // or "Check Cache".
+            // Since we updated ApprovalCache to read from file, 
+            // the Gateway *just* needs to use that cache.
+            // But if the Gateway is waiting at a prompt... the prompt is blocking the process.
+            // The current CLI implementation uses `readline` which blocks.
+            // It doesn't check the file loop.
+            // That's fine for V2 demo:
+            // 1. Run agent -> Blocks (or returns PENDING if async).
+            // 2. Dashboard -> Approve.
+            // 3. User hits Enter in CLI? Or re-runs agent?
+            // "Approval Memory" means if I re-run, it works.
+            // Let's assume the flow is: Agent asks -> User says "Check Dashboard" -> Agent checks cache.
+        }
+
+        setInterval(() => {
+            fetchApprovals();
+            fetchLogs();
+        }, 2000);
+
+        fetchApprovals();
+        fetchLogs();
+    </script>
+</body>
+</html>
