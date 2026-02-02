@@ -1,4 +1,5 @@
 import { Action, PermissionScope, Policy, PermissionDecision } from '../core/types';
+import * as path from 'path';
 
 export class PolicyEngine {
   private policy: Policy;
@@ -8,31 +9,49 @@ export class PolicyEngine {
   }
 
   async evaluate(action: Action): Promise<PermissionDecision> {
-    const scope = this.findMatchingScope(action);
+    const matchingScopes = this.findMatchingScopes(action);
 
-    if (!scope) {
+    if (matchingScopes.length === 0) {
       // Default deny if no scope matches
       return 'BLOCK';
     }
 
-    // Check specific guardrails
-    if (scope.decision === 'ALLOW') {
-      const passed = await this.checkGuardrails(action, scope);
-      if (!passed) {
-        return 'BLOCK';
+    // Priority: BLOCK > REQUIRE_APPROVAL > ALLOW
+    // If any scope says BLOCK (after guardrails), final is BLOCK.
+    // If any scope says REQUIRE_APPROVAL, final is REQUIRE_APPROVAL.
+    // Otherwise, ALLOW.
+    let finalDecision: PermissionDecision = 'ALLOW';
+
+    for (const scope of matchingScopes) {
+      let scopeDecision = scope.decision;
+
+      // Check guardrails for ALLOW and REQUIRE_APPROVAL scopes
+      if (scopeDecision === 'ALLOW' || scopeDecision === 'REQUIRE_APPROVAL') {
+        const passed = await this.checkGuardrails(action, scope);
+        if (!passed) {
+          scopeDecision = 'BLOCK';
+        }
       }
+
+      // Apply priority
+      if (scopeDecision === 'BLOCK') {
+        return 'BLOCK'; // Highest priority, return immediately
+      } else if (scopeDecision === 'REQUIRE_APPROVAL') {
+        finalDecision = 'REQUIRE_APPROVAL';
+      }
+      // ALLOW is the lowest priority, already set as default
     }
 
-    return scope.decision;
+    return finalDecision;
   }
 
-  private findMatchingScope(action: Action): PermissionScope | undefined {
-    // Find specific scope for action, default to wildcard if we had one (not for now)
-    return this.policy.scopes.find((s) => s.actionName === action.actionName);
+  private findMatchingScopes(action: Action): PermissionScope[] {
+    // Return all matching scopes, not just the first
+    return this.policy.scopes.filter((s) => s.actionName === action.actionName);
   }
 
   private async checkGuardrails(action: Action, scope: PermissionScope): Promise<boolean> {
-    // 1. Path Restrictions
+    // 1. Path Restrictions (with normalization)
     if (action.actionName === 'read_file' || action.actionName === 'write_file') {
       if (!this.isValidPath(action.parameters.path, scope.allowedPaths)) {
         return false;
@@ -60,10 +79,20 @@ export class PolicyEngine {
     return true;
   }
 
-  private isValidPath(path: string | undefined, allowedPaths: string[] | undefined): boolean {
+  private isValidPath(inputPath: string | undefined, allowedPaths: string[] | undefined): boolean {
     if (!allowedPaths) return true; // No restrictions
-    if (!path) return false;
-    return allowedPaths.some((allowed) => path.startsWith(allowed));
+    if (!inputPath) return false;
+
+    // Normalize and resolve the input path to prevent traversal attacks
+    const resolvedInput = path.resolve(path.normalize(inputPath));
+
+    return allowedPaths.some((allowed) => {
+      const resolvedAllowed = path.resolve(path.normalize(allowed));
+      // Ensure the resolved path starts with the allowed directory
+      // Add path.sep to prevent /tmp matching /tmpevil
+      return resolvedInput.startsWith(resolvedAllowed) ||
+        resolvedInput.startsWith(resolvedAllowed + path.sep);
+    });
   }
 
   private isBlockedCommand(

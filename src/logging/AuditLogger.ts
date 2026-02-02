@@ -1,17 +1,30 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
+import * as lockfile from 'proper-lockfile';
 import { AuditLogEntry } from '../core/types';
+
+// Environment variable for the audit secret (production use)
+const AUDIT_SECRET = process.env.PERMISCOPE_AUDIT_SECRET;
 
 export class AuditLogger {
   private logPath: string;
   private lastHash: string = '';
+  private secret: string | null;
 
   constructor(baseDir: string = './logs') {
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
     this.logPath = path.join(baseDir, 'audit.log');
+    this.secret = AUDIT_SECRET || null;
+
+    if (!this.secret) {
+      console.warn(
+        '⚠️  PERMISCOPE_AUDIT_SECRET not set. Audit logs are not cryptographically signed. ' +
+        'Set this environment variable in production for tamper detection.'
+      );
+    }
 
     // Initialize lastHash from existing file
     this.lastHash = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -22,43 +35,111 @@ export class AuditLogger {
         if (content) {
           const lines = content.split('\n');
           const lastLine = lines[lines.length - 1];
-          // The "last hash" needed for the NEXT entry is the hash of the PREVIOUS entry's full JSON logic.
-          // My log() method calculates:
-          //    entryWithHashForNext = JSON.stringify(fullEntry)
-          //    this.lastHash = sha256(entryWithHashForNext)
-          // So I need to re-calculate the hash of the last line found in the file.
-          this.lastHash = createHash('sha256').update(lastLine).digest('hex');
+          // Recompute the hash of the last entry to continue the chain
+          this.lastHash = this.computeHash(lastLine);
         }
       } catch (e) {
         console.error('Failed to recover audit chain:', e);
-        // In a strict system, we might crash here. For V2, we log error.
       }
+    } else {
+      // Ensure file exists for locking
+      fs.writeFileSync(this.logPath, '');
     }
   }
 
-  log(entry: Omit<AuditLogEntry, 'previousHash'>) {
-    const logString = JSON.stringify(entry);
+  private computeHash(data: string): string {
+    if (this.secret) {
+      // Use HMAC-SHA256 for signed hashes (tamper-proof)
+      return createHmac('sha256', this.secret).update(data).digest('hex');
+    } else {
+      // Fall back to plain SHA256 (development mode)
+      return createHash('sha256').update(data).digest('hex');
+    }
+  }
 
-    // Calculate new hash: sha256(previousHash + currentLogContent)
-    const hashPayload = this.lastHash + logString;
-    const newHash = createHash('sha256').update(hashPayload).digest('hex');
+  async log(entry: Omit<AuditLogEntry, 'previousHash' | 'signature'>) {
+    let release: (() => Promise<void>) | null = null;
 
-    const fullEntry: AuditLogEntry = {
-      ...entry,
-      previousHash: this.lastHash,
-    };
+    try {
+      // Acquire lock for atomic append
+      release = await lockfile.lock(this.logPath, { retries: 3 });
 
-    // We store the hash OF THIS ENTRY so the NEXT entry can use it?
-    // Or we store the previous hash IN this entry?
-    // User asked: "append hash of previous log entry".
-    // So fullEntry has `previousHash`.
-    // But to verify the chain, we also typically want the hash of the current block to be stored or easily calculable.
-    // The user just said "create a simple chain". Storing previousHash is enough to link them.
-    // I will implicitly update my local state `lastHash` to be the hash of THIS entry (including the prev hash) so the next one links to it.
+      // Re-read last hash in case another process appended
+      const content = fs.readFileSync(this.logPath, 'utf-8').trim();
+      if (content) {
+        const lines = content.split('\n');
+        const lastLine = lines[lines.length - 1];
+        this.lastHash = this.computeHash(lastLine);
+      }
 
-    const entryWithHashForNext = JSON.stringify(fullEntry);
-    this.lastHash = createHash('sha256').update(entryWithHashForNext).digest('hex');
+      const fullEntry: AuditLogEntry & { signature?: string } = {
+        ...entry,
+        previousHash: this.lastHash,
+      };
 
-    fs.appendFileSync(this.logPath, entryWithHashForNext + '\n');
+      // Add signature if secret is available
+      if (this.secret) {
+        const entryString = JSON.stringify(fullEntry);
+        fullEntry.signature = createHmac('sha256', this.secret)
+          .update(entryString)
+          .digest('hex');
+      }
+
+      const entryWithHashForNext = JSON.stringify(fullEntry);
+      this.lastHash = this.computeHash(entryWithHashForNext);
+
+      fs.appendFileSync(this.logPath, entryWithHashForNext + '\n');
+    } catch (e) {
+      console.error('Failed to write audit log:', e);
+      // In a strict production system, you might want to throw here
+    } finally {
+      if (release) await release();
+    }
+  }
+
+  // Verify the integrity of the audit log
+  verifyChain(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!fs.existsSync(this.logPath)) {
+      return { valid: true, errors: [] }; // No log yet is valid
+    }
+
+    const content = fs.readFileSync(this.logPath, 'utf-8').trim();
+    if (!content) {
+      return { valid: true, errors: [] };
+    }
+
+    const lines = content.split('\n');
+    let expectedPreviousHash = '0000000000000000000000000000000000000000000000000000000000000000';
+
+    for (let i = 0; i < lines.length; i++) {
+      try {
+        const entry = JSON.parse(lines[i]);
+
+        // Verify chain link
+        if (entry.previousHash !== expectedPreviousHash) {
+          errors.push(`Line ${i + 1}: Hash chain broken. Expected ${expectedPreviousHash}, got ${entry.previousHash}`);
+        }
+
+        // Verify signature if present and secret is available
+        if (this.secret && entry.signature) {
+          const { signature, ...entryWithoutSig } = entry;
+          const expectedSig = createHmac('sha256', this.secret)
+            .update(JSON.stringify(entryWithoutSig))
+            .digest('hex');
+          if (signature !== expectedSig) {
+            errors.push(`Line ${i + 1}: Invalid signature. Entry may have been tampered with.`);
+          }
+        }
+
+        // Compute hash for next entry
+        expectedPreviousHash = this.computeHash(lines[i]);
+      } catch (e) {
+        errors.push(`Line ${i + 1}: Parse error - ${e}`);
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
   }
 }

@@ -71,14 +71,14 @@ export class ExecutionGateway {
       success = false;
     }
 
-    // Log it
+    // Log it (async, but we don't block on it for performance)
     this.auditLogger.log({
       timestamp: new Date().toISOString(),
       agentId: action.agentId,
       action: action,
       decision: decision,
       result: { success, output, error, dryRun },
-    });
+    }).catch(e => console.error('Audit log error:', e));
 
     return { decision, success, output, error };
   }
