@@ -7,17 +7,22 @@ import { AuditLogEntry } from '../core/types';
 // Environment variable for the audit secret (production use)
 const AUDIT_SECRET = process.env.PERMISCOPE_AUDIT_SECRET;
 
+// Strict mode: if enabled, throw on log write failures instead of silent catch
+const STRICT_MODE = process.env.PERMISCOPE_STRICT_LOGGING === 'true';
+
 export class AuditLogger {
   private logPath: string;
   private lastHash: string = '';
   private secret: string | null;
+  private strictMode: boolean;
 
-  constructor(baseDir: string = './logs') {
+  constructor(baseDir: string = './logs', strictMode: boolean = STRICT_MODE) {
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
     this.logPath = path.join(baseDir, 'audit.log');
     this.secret = AUDIT_SECRET || null;
+    this.strictMode = strictMode;
 
     if (!this.secret) {
       console.warn(
@@ -91,11 +96,15 @@ export class AuditLogger {
       fs.appendFileSync(this.logPath, entryWithHashForNext + '\n');
     } catch (e) {
       console.error('Failed to write audit log:', e);
-      // In a strict production system, you might want to throw here
+      // In strict mode, throw to ensure actions are not executed without logging
+      if (this.strictMode) {
+        throw new Error(`Audit log write failed: ${e}. Action execution blocked due to strict logging mode.`);
+      }
     } finally {
       if (release) await release();
     }
   }
+
 
   // Verify the integrity of the audit log
   verifyChain(): { valid: boolean; errors: string[] } {

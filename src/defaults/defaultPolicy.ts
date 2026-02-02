@@ -7,12 +7,15 @@ const TEMP_DIR = os.tmpdir();
 export const defaultPolicy: Policy = {
   scopes: [
     // 1. Specific Sensitive Files -> Require Approval (MUST COME FIRST)
+    // This scope ONLY matches if the validator returns true (i.e., file is sensitive)
     {
       actionName: 'read_file',
       decision: 'REQUIRE_APPROVAL',
       validator: (action) => {
-        const p = action.parameters.path || '';
-        return p.includes('.env') || p.includes('id_rsa') || p.includes('shadow');
+        const p = (action.parameters.path || '').toLowerCase();
+        // Return true for sensitive files that need approval
+        return p.includes('.env') || p.includes('id_rsa') || p.includes('shadow') ||
+          p.includes('passwd') || p.includes('.pem') || p.includes('.key');
       },
     },
 

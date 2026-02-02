@@ -39,6 +39,13 @@
     <script>
         const API_URL = 'http://localhost:3000/api';
 
+        // XSS-safe HTML escaping
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         async function fetchApprovals() {
             const res = await fetch(`${API_URL}/approvals`);
             const data = await res.json();
@@ -49,19 +56,54 @@
                 return;
             }
 
-            container.innerHTML = data.map(item => {
-                if (item.status !== 'PENDING') return '';
-                return `
-                <div class="approval-item">
-                    <p><strong>Agent:</strong> ${item.agentId}</p>
-                    <p><strong>Action:</strong> <code>${item.actionName}</code></p>
-                    <p><strong>Params:</strong> ${JSON.stringify(item.params)}</p>
-                    <div style="margin-top: 10px;">
-                        <button class="btn btn-approve" onclick="decide('${item.id}', 'APPROVED')">Approve</button>
-                        <button class="btn btn-reject" onclick="decide('${item.id}', 'REJECTED')">Reject</button>
-                    </div>
-                </div>`;
-            }).join('') || '<p>No pending approvals.</p>';
+            container.innerHTML = '';
+            data.forEach(item => {
+                if (item.status !== 'PENDING') return;
+                
+                const div = document.createElement('div');
+                div.className = 'approval-item';
+                
+                const agentP = document.createElement('p');
+                agentP.innerHTML = '<strong>Agent:</strong> ';
+                agentP.appendChild(document.createTextNode(item.agentId));
+                
+                const actionP = document.createElement('p');
+                actionP.innerHTML = '<strong>Action:</strong> ';
+                const code = document.createElement('code');
+                code.textContent = item.actionName;
+                actionP.appendChild(code);
+                
+                const paramsP = document.createElement('p');
+                paramsP.innerHTML = '<strong>Params:</strong> ';
+                paramsP.appendChild(document.createTextNode(JSON.stringify(item.params)));
+                
+                const btnDiv = document.createElement('div');
+                btnDiv.style.marginTop = '10px';
+                
+                const approveBtn = document.createElement('button');
+                approveBtn.className = 'btn btn-approve';
+                approveBtn.textContent = 'Approve';
+                approveBtn.addEventListener('click', () => decide(item.id, 'APPROVED'));
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'btn btn-reject';
+                rejectBtn.textContent = 'Reject';
+                rejectBtn.addEventListener('click', () => decide(item.id, 'REJECTED'));
+                
+                btnDiv.appendChild(approveBtn);
+                btnDiv.appendChild(rejectBtn);
+                
+                div.appendChild(agentP);
+                div.appendChild(actionP);
+                div.appendChild(paramsP);
+                div.appendChild(btnDiv);
+                
+                container.appendChild(div);
+            });
+            
+            if (container.children.length === 0) {
+                container.innerHTML = '<p>No pending approvals.</p>';
+            }
         }
 
         async function fetchLogs() {
@@ -69,42 +111,26 @@
             const data = await res.json();
             const container = document.getElementById('logsList');
             
-            container.innerHTML = data.map(log => {
+            container.innerHTML = '';
+            data.forEach(log => {
                 const isBlocked = log.decision === 'BLOCK';
-                const colorClass = isBlocked ? 'log-fail' : 'log-success';
-                return `
-                <div class="log-entry ${colorClass}">
-                    [${new Date(log.timestamp).toLocaleTimeString()}] 
-                    <strong>${log.decision}</strong> 
-                    ${log.action.actionName} 
-                    (${log.agentId})
-                </div>`;
-            }).join('');
+                const div = document.createElement('div');
+                div.className = 'log-entry ' + (isBlocked ? 'log-fail' : 'log-success');
+                
+                const time = new Date(log.timestamp).toLocaleTimeString();
+                div.textContent = `[${time}] ${log.decision} ${log.action.actionName} (${log.agentId})`;
+                
+                container.appendChild(div);
+            });
         }
 
         async function decide(id, status) {
-            await fetch(`${API_URL}/approvals/${id}`, {
+            await fetch(`${API_URL}/approvals/${encodeURIComponent(id)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })
             });
             fetchApprovals();
-            // Approving triggers a write to file, waiting for agent to poll... 
-            // Wait, does our Gateway poll?
-            // The current Gateway implementation does NOT poll. It blocks or asks immediately.
-            // For V2 dashboard, the Gateway behavior needs to change to "Wait for External Approval"
-            // or "Check Cache".
-            // Since we updated ApprovalCache to read from file, 
-            // the Gateway *just* needs to use that cache.
-            // But if the Gateway is waiting at a prompt... the prompt is blocking the process.
-            // The current CLI implementation uses `readline` which blocks.
-            // It doesn't check the file loop.
-            // That's fine for V2 demo:
-            // 1. Run agent -> Blocks (or returns PENDING if async).
-            // 2. Dashboard -> Approve.
-            // 3. User hits Enter in CLI? Or re-runs agent?
-            // "Approval Memory" means if I re-run, it works.
-            // Let's assume the flow is: Agent asks -> User says "Check Dashboard" -> Agent checks cache.
         }
 
         setInterval(() => {

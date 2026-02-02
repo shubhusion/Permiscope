@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as lockfile from 'proper-lockfile';
+import stringify from 'fast-json-stable-stringify';
 
 // Default TTL: 1 hour (in milliseconds)
 const DEFAULT_APPROVAL_TTL_MS = 60 * 60 * 1000;
@@ -83,8 +84,9 @@ export class ApprovalCache {
     fs.writeFileSync(this.filePath, JSON.stringify(items, null, 2));
   }
 
+  // Use stable stringify for consistent key generation (object key order independent)
   private getKey(agentId: string, actionName: string, params: Record<string, any>): string {
-    return Buffer.from(`${agentId}:${actionName}:${JSON.stringify(params)}`).toString('base64');
+    return Buffer.from(`${agentId}:${actionName}:${stringify(params)}`).toString('base64');
   }
 
   private isExpired(item: ApprovalRequest): boolean {

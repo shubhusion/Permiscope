@@ -1,5 +1,6 @@
 import { Action, PermissionScope, Policy, PermissionDecision } from '../core/types';
 import * as path from 'path';
+import safeRegex from 'safe-regex';
 
 export class PolicyEngine {
   private policy: Policy;
@@ -84,10 +85,10 @@ export class PolicyEngine {
     if (!inputPath) return false;
 
     // Normalize and resolve the input path to prevent traversal attacks
-    const resolvedInput = path.resolve(path.normalize(inputPath));
+    const resolvedInput = path.resolve(path.normalize(inputPath)).toLowerCase();
 
     return allowedPaths.some((allowed) => {
-      const resolvedAllowed = path.resolve(path.normalize(allowed));
+      const resolvedAllowed = path.resolve(path.normalize(allowed)).toLowerCase();
       // Ensure the resolved path starts with the allowed directory
       // Add path.sep to prevent /tmp matching /tmpevil
       return resolvedInput.startsWith(resolvedAllowed) ||
@@ -106,6 +107,12 @@ export class PolicyEngine {
     const normalized = this.normalizeCommand(command);
 
     for (const pattern of blockedPatterns) {
+      // ReDoS protection: check if regex is safe before using
+      if (!safeRegex(pattern)) {
+        console.warn(`⚠️  Skipping unsafe regex pattern (potential ReDoS): ${pattern}`);
+        continue;
+      }
+
       const regex = new RegExp(pattern);
       if (regex.test(normalized)) {
         return true;
@@ -117,7 +124,9 @@ export class PolicyEngine {
   private normalizeCommand(cmd: string): string {
     return cmd
       .replace(/\\/g, '') // Strip backslashes used for escaping
-      .replace(/['"]/g, '') // Strip quotes
+      .replace(/['"`]/g, '') // Strip quotes (including backticks)
+      .replace(/\$\([^)]*\)/g, '') // Strip command substitution $()
+      .replace(/`[^`]*`/g, '') // Strip backtick substitution
       .replace(/\s+/g, ' ') // Collapse multiple spaces
       .trim();
   }
