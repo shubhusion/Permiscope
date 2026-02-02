@@ -1,6 +1,6 @@
 {
   "name": "permiscope",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The Trust Layer for AI Agents - Secure gateway for autonomous tools.",
   "main": "dist/index.js",
   "bin": {
