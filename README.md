@@ -16,7 +16,10 @@
 
 **Permiscope** is an open-source infrastructure layer that mediates all real-world actions performed by autonomous AI agents. Think of it as **OAuth + Policy Engine + Audit System** for AI agents.
 
-Its mission is to make autonomous systems **safe, trustworthy, and production-ready** by enforcing a robust "Mediated Execution Model."
+## 🚀 Why Permiscope?
+
+Without mediation, agents operate with full system permissions — a single bug or prompt injection can cause catastrophic damage. Permiscope enforces **least privilege, human oversight, and auditability** by default, making autonomous systems safe for production.
+
 ---
 
 ## 🧠 The Problem
@@ -85,22 +88,19 @@ graph LR
 ## 🚀 Quick Start
 ### 📦 Installation
 
-Install globally for CLI use:
-```bash
-npm install -g permiscope
-```
+### ⚡ 30-Second Quick Start
 
-Or as a dependency in your project:
+Get a guided tour of Permiscope in action:
 ```bash
-npm install permiscope
+npx permiscope --demo
 ```
+*This demo showcases allowed, blocked, and human-approved actions in a safe environment.*
+
+---
 
 ### 🛠️ Execution & CLI
 
-Permiscope allows you to wrap agent commands safely. Use the following patterns to test the gateway:
-
-> [!TIP]
-> Once installed, you can use the `permiscope` command directly.
+Permiscope allows you to wrap agent commands safely:
 
 - **✅ Allowed Action:**
   ```bash
@@ -110,16 +110,16 @@ Permiscope allows you to wrap agent commands safely. Use the following patterns 
   ```bash
   permiscope run_command "rm -rf /"
   ```
-- **⚠️ Manual Approval Required:**
-  ```bash
-  permiscope --demo
-  ```
 
-### 💻 Web Dashboard & Monitoring
+### 💻 Web Dashboard
+
+> [!NOTE]
+> The Web Dashboard is currently optimized for local/development usage.
 
 1. **Start the Control Plane:**
    ```bash
-   npx ts-node src/dashboard/server.ts
+   # From within the repository
+   npm run dev:dashboard
    ```
 2. **Access the Interface:** Open [http://localhost:3000](http://localhost:3000) to review approvals and live audit trails.
 
@@ -135,13 +135,14 @@ const content = await agent.act('read_file', { path: 'config.json' });
 ```
 
 ### Simplified Adapter
+
 For a lightweight "one-liner" integration:
 
 ```typescript
-import { PermiscopeAdapter } from './src/adapters/PermiscopeAdapter';
+import { createAgent } from 'permiscope';
 
-const adapter = new PermiscopeAdapter({ policy: myPolicy });
-const content = await adapter.act('read_file', { path: 'config.json' });
+const agent = createAgent();
+const content = await agent.act('read_file', { path: 'config.json' });
 ```
 
 ---

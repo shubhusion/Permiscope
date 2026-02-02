@@ -9,8 +9,12 @@
   "scripts": {
     "build": "tsc",
     "test": "jest",
-    "audit:verify": "node dist/tests/unit/verify_chain.js",
-    "demo": "node dist/cli/index.js --demo"
+    "audit:verify": "ts-node src/tests/unit/verify_chain.ts",
+    "demo": "node dist/cli/index.js --demo",
+    "dev:dashboard": "ts-node src/dashboard/server.ts",
+    "lint": "eslint src/**/*.ts tests/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts tests/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts tests/**/*.ts"
   },
   "keywords": [
     "ai",
@@ -49,14 +53,20 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "typescript": "^5.9.3",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.1.0",
     "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.2.0",
+    "prettier": "^3.8.1",
     "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
