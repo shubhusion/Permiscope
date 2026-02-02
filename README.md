@@ -55,14 +55,14 @@ graph LR
       <h3>🔐 Granular Control</h3>
       <ul>
         <li><b>Permission Scopes:</b> ALLOW, BLOCK, or REQUIRE_APPROVAL for any action.</li>
-        <li><b>Contextual Guardrails:</b> Path restrictions and command filtering (e.g., block <code>rm -rf</code>).</li>
+        <li><b>Contextual Guardrails:</b> Case-insensitive path restrictions and <b>ReDoS-protected</b> command filtering.</li>
       </ul>
     </td>
     <td width="50%" valign="top">
       <h3>👤 Human-in-the-Loop</h3>
       <ul>
         <li><b>Approval Gateway:</b> Pause sensitive actions for manual review.</li>
-        <li><b>Approval Cache:</b> Prevent fatigue with session-based caching.</li>
+        <li><b>Stable Approval Cache:</b> Prevent fatigue with deterministic, session-based caching.</li>
       </ul>
     </td>
   </tr>
@@ -70,23 +70,28 @@ graph LR
     <td width="50%" valign="top">
       <h3>📝 Trust & Transparency</h3>
       <ul>
-        <li><b>Tamper-Aware Logs:</b> SHA-256 hash chaining for audit integrity.</li>
+        <li><b>Tamper-Proof Logs:</b> HMAC-SHA256 signed hash chaining for audit integrity.</li>
         <li><b>Dry-Run Mode:</b> Simulate actions to understand results without side effects.</li>
       </ul>
     </td>
     <td width="50%" valign="top">
       <h3>🚀 Advanced Features</h3>
       <ul>
-        <li><b>Shadow Mode (V2):</b> Safely test untrusted agents in isolation.</li>
-        <li><b>Web Dashboard (V2):</b> Manage approvals and monitor logs in real-time.</li>
+        <li><b>Shadow Mode:</b> Safely test untrusted agents in isolation.</li>
+        <li><b>Authenticated Dashboard:</b> Securely manage approvals and monitor logs in real-time.</li>
       </ul>
     </td>
   </tr>
 </table>
+
 ---
 
 ## 🚀 Quick Start
 ### 📦 Installation
+
+```bash
+npm install permiscope
+```
 
 ### ⚡ 30-Second Quick Start
 
@@ -95,6 +100,18 @@ Get a guided tour of Permiscope in action:
 npx permiscope --demo
 ```
 *This demo showcases allowed, blocked, and human-approved actions in a safe environment.*
+
+---
+
+## 🔐 Security Configuration
+
+Permiscope is designed for high-trust environments. Use these environment variables to harden your installation:
+
+| Variable | Importance | Description |
+|----------|------------|-------------|
+| `PERMISCOPE_AUDIT_SECRET` | **Critical** | Secret key for HMAC-SHA256 audit log signing. |
+| `PERMISCOPE_DASHBOARD_TOKEN` | **High** | Bearer token required to update approvals via the API/Dashboard. |
+| `PERMISCOPE_STRICT_LOGGING` | Medium | Set to `true` to block actions if the audit log cannot be written. |
 
 ---
 
@@ -113,8 +130,8 @@ Permiscope allows you to wrap agent commands safely:
 
 ### 💻 Web Dashboard
 
-> [!NOTE]
-> The Web Dashboard is currently optimized for local/development usage.
+> [!IMPORTANT]
+> In production, always set `PERMISCOPE_DASHBOARD_TOKEN` for the control plane.
 
 1. **Start the Control Plane:**
    ```bash
@@ -130,19 +147,28 @@ Permiscope allows you to wrap agent commands safely:
 ```typescript
 import { createAgent } from 'permiscope';
 
+// Default safe agent
 const agent = createAgent();
+
+// Action execution
 const content = await agent.act('read_file', { path: 'config.json' });
 ```
 
-### Simplified Adapter
-
-For a lightweight "one-liner" integration:
+### Advanced Customization
 
 ```typescript
-import { createAgent } from 'permiscope';
+import { createAgent, defaultPolicy } from 'permiscope';
 
-const agent = createAgent();
-const content = await agent.act('read_file', { path: 'config.json' });
+const agent = createAgent({
+  name: "custom-agent",
+  policy: {
+    scopes: [
+       ...defaultPolicy.scopes,
+       { actionName: "my_custom_action", decision: "ALLOW" }
+    ]
+  },
+  shadowMode: false
+});
 ```
 
 ---
@@ -154,20 +180,13 @@ Check out `src/scenarios/` for full demos:
 
 ---
 
-## 🗺️ Roadmap
-
-- [x] **Core Policy Engine** (Allow/Block logic)
-- [x] **Secure Gateway** (Interception & Execution)
-- [x] **Basic Guardrails** (File paths, Command regex)
-- [x] **CLI & Human Approval**
-- [x] **Tamper-Aware Logging** (SHA-256 Chaining)
-- [x] **Policy-as-Code** (TypeScript Rules)
-- [x] **Web Dashboard** (Visual approvals & logs)
-- [x] **Shadow Mode** (Simulate success to test agent behavior)
-
 ## 🤝 Contributing
 
-Permiscope is open-source. We welcome contributions! Please see `CONTRIBUTING.md` for details.
+We welcome community contributions! Permiscope uses structured templates for **Bug Reports**, **Feature Requests**, and **Pull Requests**.
+
+1. Fork the repository.
+2. Follow the [Contributing Guidelines](CONTRIBUTING.md).
+3. Open a PR with our standardized template.
 
 ## 📄 License
 
