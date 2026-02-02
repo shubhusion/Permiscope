@@ -42,18 +42,19 @@ app.get('/api/logs', (req, res) => {
 });
 
 // API: Get Approvals
-app.get('/api/approvals', (req, res) => {
-  const approvals = approvalCache.getAll();
+app.get('/api/approvals', async (req, res) => {
+  const approvals = await approvalCache.getAll();
   // Filter for pending only? Or all? Let's return all but sort pending to top
   const sorted = approvals.sort((a, b) => {
     if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+    if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
     return 0;
   });
   res.json(sorted);
 });
 
 // API: Update Approval
-app.post('/api/approvals/:id', (req, res) => {
+app.post('/api/approvals/:id', async (req, res) => {
   const { id } = req.params;
   const { status } = req.body; // APPROVED or REJECTED
 
@@ -61,7 +62,7 @@ app.post('/api/approvals/:id', (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
-  approvalCache.updateStatus(id, status);
+  await approvalCache.updateStatus(id, status as 'APPROVED' | 'REJECTED');
   res.json({ success: true });
 });
 

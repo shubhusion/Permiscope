@@ -34,7 +34,7 @@ export class ExecutionGateway {
 
     // Check approval cache if needed
     if (decision === 'REQUIRE_APPROVAL') {
-      if (this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters)) {
+      if (await this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters)) {
         decision = 'ALLOW';
       } else if (dryRun) {
         // In dry run, we stop here and report that approval would be needed
@@ -42,7 +42,7 @@ export class ExecutionGateway {
         // Request actual human approval (now with polling!)
         const approved = await this.requestHumanApproval(action);
         if (approved) {
-          this.approvalCache.approve(action.agentId, action.actionName, action.parameters);
+          await this.approvalCache.approve(action.agentId, action.actionName, action.parameters);
           decision = 'ALLOW';
         } else {
           decision = 'BLOCK';
@@ -84,7 +84,7 @@ export class ExecutionGateway {
   }
 
   private async requestHumanApproval(action: Action): Promise<boolean> {
-    this.approvalCache.requestApproval(action.agentId, action.actionName, action.parameters);
+    await this.approvalCache.requestApproval(action.agentId, action.actionName, action.parameters);
 
     const rl = readline.createInterface({
       input: process.stdin,
@@ -99,15 +99,16 @@ export class ExecutionGateway {
 
     return new Promise((resolve) => {
       // Poll for external approval (Dashboard)
-      const pollInterval = setInterval(() => {
-        if (this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters)) {
+      const pollInterval = setInterval(async () => {
+        const approved = await this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters);
+        const rejected = await this.approvalCache.isRejected(action.agentId, action.actionName, action.parameters);
+
+        if (approved) {
           clearInterval(pollInterval);
           rl.close();
           console.log('\n✅ Approved via Dashboard.');
           resolve(true);
-        } else if (
-          this.approvalCache.isRejected(action.agentId, action.actionName, action.parameters)
-        ) {
+        } else if (rejected) {
           clearInterval(pollInterval);
           rl.close();
           console.log('\n❌ Rejected via Dashboard.');
@@ -116,9 +117,11 @@ export class ExecutionGateway {
       }, 500);
 
       rl.question('Allow this action? (y/N): ', (answer) => {
-        clearInterval(pollInterval);
-        rl.close();
-        resolve(answer.toLowerCase() === 'y');
+        if (rl.line !== undefined) { // Check if not already closed by poll
+          clearInterval(pollInterval);
+          rl.close();
+          resolve(answer.toLowerCase() === 'y');
+        }
       });
     });
   }

@@ -73,7 +73,7 @@ export class ApprovalCache {
     }
   }
 
-  // Synchronous version for polling (non-blocking check)
+  // Synchronous version for polling (only read-only non-critical parts)
   private load() {
     this.loadSync();
   }
@@ -92,8 +92,8 @@ export class ApprovalCache {
     return new Date(item.expiresAt) < new Date();
   }
 
-  isApproved(agentId: string, actionName: string, params: Record<string, any>): boolean {
-    this.load(); // Reload to see updates from Dashboard
+  async isApproved(agentId: string, actionName: string, params: Record<string, any>): Promise<boolean> {
+    await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     const item = this.cache.get(key);
 
@@ -104,22 +104,22 @@ export class ApprovalCache {
     if (this.isExpired(item)) {
       // Clean up expired approval
       this.cache.delete(key);
-      this.save();
+      await this.saveWithLock();
       return false;
     }
 
     return true;
   }
 
-  isRejected(agentId: string, actionName: string, params: Record<string, any>): boolean {
-    this.load();
+  async isRejected(agentId: string, actionName: string, params: Record<string, any>): Promise<boolean> {
+    await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     const item = this.cache.get(key);
     return item?.status === 'REJECTED';
   }
 
-  requestApproval(agentId: string, actionName: string, params: Record<string, any>) {
-    this.load();
+  async requestApproval(agentId: string, actionName: string, params: Record<string, any>) {
+    await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     if (!this.cache.has(key)) {
       this.cache.set(key, {
@@ -130,12 +130,12 @@ export class ApprovalCache {
         status: 'PENDING',
         timestamp: new Date().toISOString(),
       });
-      this.save();
+      await this.saveWithLock();
     }
   }
 
-  approve(agentId: string, actionName: string, params: Record<string, any>) {
-    this.load();
+  async approve(agentId: string, actionName: string, params: Record<string, any>) {
+    await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     const expiresAt = new Date(Date.now() + this.ttlMs).toISOString();
 
@@ -143,7 +143,7 @@ export class ApprovalCache {
     if (item) {
       item.status = 'APPROVED';
       item.expiresAt = expiresAt;
-      this.save();
+      await this.saveWithLock();
     } else {
       this.cache.set(key, {
         id: key,
@@ -154,46 +154,48 @@ export class ApprovalCache {
         timestamp: new Date().toISOString(),
         expiresAt,
       });
-      this.save();
+      await this.saveWithLock();
     }
   }
 
   // Methods for Dashboard
-  getAll(): ApprovalRequest[] {
-    this.load();
+  async getAll(): Promise<ApprovalRequest[]> {
+    await this.loadWithLock();
     // Filter out expired approvals for display
     const all = Array.from(this.cache.values());
     return all.filter(item => !this.isExpired(item) || item.status === 'PENDING');
   }
 
-  updateStatus(id: string, status: 'APPROVED' | 'REJECTED') {
-    this.load();
+  async updateStatus(id: string, status: 'APPROVED' | 'REJECTED') {
+    await this.loadWithLock();
     const item = this.cache.get(id);
     if (item) {
       item.status = status;
       if (status === 'APPROVED') {
         item.expiresAt = new Date(Date.now() + this.ttlMs).toISOString();
       }
-      this.save();
+      await this.saveWithLock();
     }
   }
 
   // Revoke an approval (useful for policy updates)
-  revoke(agentId: string, actionName: string, params: Record<string, any>) {
-    this.load();
+  async revoke(agentId: string, actionName: string, params: Record<string, any>) {
+    await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     this.cache.delete(key);
-    this.save();
+    await this.saveWithLock();
   }
 
   // Clear all expired approvals
-  clearExpired() {
-    this.load();
+  async clearExpired() {
+    await this.loadWithLock();
+    let changed = false;
     for (const [key, item] of this.cache.entries()) {
       if (this.isExpired(item)) {
         this.cache.delete(key);
+        changed = true;
       }
     }
-    this.save();
+    if (changed) await this.saveWithLock();
   }
 }

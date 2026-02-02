@@ -101,12 +101,24 @@ export class PolicyEngine {
   ): boolean {
     if (!blockedPatterns) return false; // No restrictions
     if (!command) return true; // Block empty command if patterns exist? Safe bet.
+
+    // Normalize command to prevent simple shell evasion (backslashes, varied quoting)
+    const normalized = this.normalizeCommand(command);
+
     for (const pattern of blockedPatterns) {
       const regex = new RegExp(pattern);
-      if (regex.test(command)) {
+      if (regex.test(normalized)) {
         return true;
       }
     }
     return false;
+  }
+
+  private normalizeCommand(cmd: string): string {
+    return cmd
+      .replace(/\\/g, '') // Strip backslashes used for escaping
+      .replace(/['"]/g, '') // Strip quotes
+      .replace(/\s+/g, ' ') // Collapse multiple spaces
+      .trim();
   }
 }
