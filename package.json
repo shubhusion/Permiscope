@@ -33,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shubhusion/permiscope"
+    "url": "git+https://github.com/shubhusion/permiscope.git"
   },
   "homepage": "https://github.com/shubhusion/permiscope",
   "bugs": {
