@@ -257,6 +257,21 @@ const tools = [safeShellTool, safeFileTool];
 
 ---
 
+## 🔌 Framework Integrations
+
+Permiscope works with any agent framework or custom workflow.
+
+| Framework | Pattern | Demo |
+|-----------|---------|------|
+| **LangChain** | Wrap Tool Executors | [langchain.ts](./examples/integrations/langchain.ts) |
+| **CrewAI** | Multi-Agent Governance | [crewai.ts](./examples/integrations/crewai.ts) |
+| **Custom Loops** | Mediated `act()` calls | [custom-loop.ts](./examples/integrations/custom-loop.ts) |
+| **Workflows** | Functional `wrap()` | [workflow-runner.ts](./examples/integrations/workflow-runner.ts) |
+
+**Learn more in the [Integrations Guide](./docs/integrations.md).**
+
+---
+
 ## 🧪 Real-World Scenarios
 
 Check out `src/scenarios/` for full demos:
