@@ -36,17 +36,25 @@ sequenceDiagram
 ## Enabling Shadow Mode
 
 ```typescript
-import { createAgent } from 'permiscope';
+import { PermiscopeAdapter } from 'permiscope';
 
-const agent = createAgent({
-  name: 'untrusted-agent',
+const permiscope = new PermiscopeAdapter({
+  defaultAgentId: 'untrusted-agent',
   shadowMode: true
 });
 
-// Agent thinks this worked, but nothing happened
-const result = await agent.act('run_command', { command: 'rm -rf /' });
+// The caller thinks this worked, but nothing happened
+const result = await permiscope.act('run_command', { command: 'rm -rf /' });
 // result.success === true
 // result.output === 'simulated'
+```
+
+Alternatively, for quick demos:
+
+```typescript
+import { createAgent } from 'permiscope';
+
+const agent = createAgent({ shadowMode: true });
 ```
 
 ## Decision Types in Shadow Mode

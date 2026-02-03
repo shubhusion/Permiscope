@@ -142,41 +142,139 @@ Permiscope allows you to wrap agent commands safely:
 
 ---
 
+## 🎯 Framework Agnostic by Design
+
+> **Permiscope doesn't create agents — it governs what they can do.**
+
+Permiscope is a **trust layer**, not an agent framework. It wraps your existing execution logic with policy enforcement, approvals, and audit logging. Works with:
+
+- LangChain / LangGraph
+- CrewAI
+- Custom agent loops
+- Scripts and automations
+- Any Node.js/TypeScript code
+
+---
+
 ## 🏗️ Integration Guide
 
+### Primary API: PermiscopeAdapter
+
 ```typescript
-import { createAgent } from 'permiscope';
+import { PermiscopeAdapter } from 'permiscope';
 
-// Default safe agent
-const agent = createAgent();
+// Create a trust layer with default policy
+const permiscope = new PermiscopeAdapter();
 
-// Action execution
-const content = await agent.act('read_file', { path: 'config.json' });
+// Execute actions through the governed gateway
+const content = await permiscope.act('read_file', { path: 'config.json' });
 ```
 
-### Advanced Customization
+### Wrapping Your Agent's Execution
+
+Use `wrap()` to govern any function:
 
 ```typescript
-import { createAgent, defaultPolicy } from 'permiscope';
+import { PermiscopeAdapter } from 'permiscope';
+import * as fs from 'fs';
 
-const agent = createAgent({
-  name: "custom-agent",
+const permiscope = new PermiscopeAdapter({ policy: myPolicy });
+
+// Wrap your existing executor
+const safeReadFile = permiscope.wrap('read_file', async (params) => {
+  return fs.readFileSync(params.path, 'utf-8');
+});
+
+// Now your function is governed
+const content = await safeReadFile({ path: 'config.json' });
+```
+
+### One-Liner Utility: withPermiscope
+
+```typescript
+import { withPermiscope } from 'permiscope';
+
+// Create a governed function in one line
+const safeDelete = withPermiscope('delete_file', async (params) => {
+  fs.unlinkSync(params.path);
+}, { policy: strictPolicy });
+
+await safeDelete({ path: '/tmp/temp.txt' });
+```
+
+### Custom Policy Example
+
+```typescript
+import { PermiscopeAdapter, defaultPolicy } from 'permiscope';
+
+const permiscope = new PermiscopeAdapter({
   policy: {
     scopes: [
-       ...defaultPolicy.scopes,
-       { actionName: "my_custom_action", decision: "ALLOW" }
+      ...defaultPolicy.scopes,
+      { actionName: 'call_api', decision: 'REQUIRE_APPROVAL' }
     ]
-  },
-  shadowMode: false
+  }
 });
 ```
 
 ---
 
+## 🔌 Integration Examples
+
+### With a Custom Agent Loop
+
+```typescript
+import { PermiscopeAdapter } from 'permiscope';
+
+const permiscope = new PermiscopeAdapter();
+
+async function agentStep(action: string, params: Record<string, any>) {
+  // All actions go through the trust layer
+  return permiscope.act(action, params);
+}
+
+// Your agent loop
+while (hasMoreWork) {
+  const nextAction = await agent.plan();
+  const result = await agentStep(nextAction.name, nextAction.params);
+  await agent.observe(result);
+}
+```
+
+### With LangChain Tools (Conceptual)
+
+```typescript
+import { PermiscopeAdapter, withPermiscope } from 'permiscope';
+
+// Wrap LangChain tool executors
+const safeShellTool = withPermiscope('run_command', async (params) => {
+  return shellTool.call(params.command);
+});
+
+// Use in your chain
+const tools = [safeShellTool, safeFileTool];
+```
+
+---
+
 ## 🧪 Real-World Scenarios
+
 Check out `src/scenarios/` for full demos:
 1. **DevOps Agent**: Safely edits configs, blocked from restarting services.
-2. **Data Agent**: Reads raw data, writes processed out, blocked from overwriting raw.
+2. **Data Agent**: Reads raw data, writes processed output, blocked from overwriting raw.
+
+---
+
+## 📚 Documentation
+
+See the [`/docs`](./docs) folder for detailed guides:
+
+- [Architecture](./docs/architecture.md) — System design and trust boundaries
+- [Security Model](./docs/security-model.md) — Threat model and guarantees
+- [Policy Engine](./docs/policy-engine.md) — Rule evaluation and guardrails
+- [Approvals Workflow](./docs/approvals-workflow.md) — Human-in-the-loop
+- [Custom Executors](./docs/custom-executors.md) — Extending Permiscope
+- [FAQ](./docs/faq.md) — Common questions
 
 ---
 

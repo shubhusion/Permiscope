@@ -1,13 +1,13 @@
 # Architecture
 
-Permiscope is a **mediated execution layer** that sits between AI agents and real-world systems. Every action an agent wants to perform must pass through Permiscope's secure gateway.
+Permiscope is a **mediated execution layer** that sits between an external system (agent, script, or workflow) and real-world resources. Every action an external system wants to perform must pass through Permiscope's secure gateway.
 
 ## Overview
 
 ```mermaid
 graph TD
-    subgraph "Agent Layer"
-        A[🤖 AI Agent]
+    subgraph "External System"
+        A["🤖 Agent / Script / Workflow"]
     end
 
     subgraph "Permiscope Trust Layer"
@@ -18,7 +18,7 @@ graph TD
         F[AuditLogger]
     end
 
-    subgraph "System Layer"
+    subgraph "Resource Layer"
         G[File System]
         H[Shell/Commands]
         I[APIs]
@@ -40,13 +40,13 @@ graph TD
 ## Components
 
 ### PermiscopeAdapter
-- **Role**: High-level API for agent integration
-- **Responsibility**: Creates actions and routes them through the gateway
+- **Role**: Primary integration API.
+- **Responsibility**: Provides a framework-agnostic way to wrap execution and route actions through the gateway.
 - **Location**: `src/adapters/PermiscopeAdapter.ts`
 
 ### ExecutionGateway
-- **Role**: Central orchestrator
-- **Responsibility**: Coordinates policy evaluation, approval handling, execution, and logging
+- **Role**: Central orchestrator.
+- **Responsibility**: Coordinates policy evaluation, approval handling, execution, and logging.
 - **Location**: `src/gateway/ExecutionGateway.ts`
 
 ### PolicyEngine

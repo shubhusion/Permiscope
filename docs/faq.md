@@ -27,10 +27,10 @@ npm install permiscope
 ```
 
 ```typescript
-import { createAgent } from 'permiscope';
+import { PermiscopeAdapter } from 'permiscope';
 
-const agent = createAgent();
-await agent.act('read_file', { path: 'data.json' });
+const permiscope = new PermiscopeAdapter();
+await permiscope.act('read_file', { path: 'data.json' });
 ```
 
 ### Can I use custom action types?

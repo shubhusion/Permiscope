@@ -4,13 +4,13 @@ This document explains the fundamental concepts in Permiscope.
 
 ## Actions
 
-An **Action** is a request from an agent to perform a real-world operation.
+An **Action** is a request from an external system to perform a real-world operation.
 
 ```typescript
 interface Action {
   actionName: string;      // e.g., 'read_file', 'run_command'
   parameters: Record<string, any>;
-  agentId: string;
+  agentId: string;         // Identifier for the caller (system/agent)
   reason?: string;
   timestamp: Date;
 }
@@ -87,16 +87,16 @@ const result = await gateway.run(action, true); // dryRun = true
 
 ## Shadow Mode
 
-Test untrusted agents safely:
+Test untrusted systems safely:
 
 ```typescript
-const agent = createAgent({ shadowMode: true });
+const permiscope = new PermiscopeAdapter({ shadowMode: true });
 ```
 
-- Blocked actions appear successful to the agent
+- Blocked actions appear successful to the caller
 - Decision is `SHADOW_BLOCK`
 - No actual execution occurs
-- Useful for observing agent behavior
+- Useful for observing behavior
 
 ## Audit Trail
 
