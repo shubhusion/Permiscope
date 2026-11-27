@@ -6,7 +6,7 @@ import * as path from 'path';
 import { ApprovalCache } from '../gateway/ApprovalCache';
 import { AuditLogger } from '../logging/AuditLogger';
 
-const app = express();
+export const app = express();
 const port = 3000;
 
 // Security: API token from environment variable
@@ -14,7 +14,7 @@ const API_TOKEN = process.env.PERMISCOPE_DASHBOARD_TOKEN;
 
 if (!API_TOKEN) {
   console.warn(
-    '⚠️  PERMISCOPE_DASHBOARD_TOKEN not set. Dashboard API is unauthenticated! ' +
+    '⚠️  PERMISCOPE_DASHBOARD_TOKEN not set. All dashboard API routes are unauthenticated! ' +
       'Set this environment variable in production for security.',
   );
 }
@@ -44,6 +44,7 @@ const authMiddleware = (
   res: express.Response,
   next: express.NextFunction,
 ) => {
+  if (req.method === 'OPTIONS') return next();
   // Skip auth in development if no token is set
   if (!API_TOKEN) {
     return next();
@@ -56,7 +57,18 @@ const authMiddleware = (
   next();
 };
 
-// API: Audit chain status (read-only, no auth required)
+// Every API route requires the bearer token; CORS alone is not authentication.
+app.use('/api', authMiddleware);
+
+function redact(params: Record<string, any>): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params ?? {})) {
+    result[key] = value && typeof value === 'object' ? '[object]' : '[redacted]';
+  }
+  return result;
+}
+
+// API: Audit chain status
 app.get('/api/chain', (_req, res) => {
   const result = auditLogger.verifyChain();
   const entries = fs.existsSync(logPath)
@@ -73,7 +85,7 @@ app.get('/api/chain', (_req, res) => {
   });
 });
 
-// API: Get Logs (read-only, no auth required)
+// API: Get Logs (authenticated). Parameter values are redacted unless raw=1.
 app.get('/api/logs', (req, res) => {
   if (!fs.existsSync(logPath)) {
     return res.json([]);
@@ -93,13 +105,21 @@ app.get('/api/logs', (req, res) => {
       })
       .filter((l) => l !== null)
       .reverse(); // Newest first
+
+    if (req.query.raw !== '1') {
+      for (const entry of logs) {
+        if (entry?.action?.parameters) {
+          entry.action.parameters = redact(entry.action.parameters);
+        }
+      }
+    }
     res.json(logs);
   } catch {
     res.status(500).json({ error: 'Failed to read logs' });
   }
 });
 
-// API: Get Approvals (read-only, no auth required)
+// API: Get Approvals (authenticated)
 app.get('/api/approvals', async (req, res) => {
   const approvals = await approvalCache.getAll();
   // Filter for pending only? Or all? Let's return all but sort pending to top
@@ -111,8 +131,8 @@ app.get('/api/approvals', async (req, res) => {
   res.json(sorted);
 });
 
-// API: Update Approval (PROTECTED - requires auth)
-app.post('/api/approvals/:id', authMiddleware, async (req, res) => {
+// API: Update Approval (authenticated via the /api middleware)
+app.post('/api/approvals/:id', async (req, res) => {
   const id = req.params.id as string;
   const { status } = req.body; // APPROVED or REJECTED
 
@@ -140,6 +160,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.listen(port, () => {
-  console.log(`Permiscope Dashboard running at http://localhost:${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Permiscope Dashboard running at http://localhost:${port}`);
+  });
+}
