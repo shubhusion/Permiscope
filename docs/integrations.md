@@ -81,9 +81,34 @@ See [examples/integrations/workflow-runner.ts](../examples/integrations/workflow
 
 ---
 
+## Language-Agnostic Sidecar
+
+For agent stacks that are not Node.js, run Permiscope as a loopback HTTP service.
+It requires a bearer token, binds to `127.0.0.1` by default, validates JSON bodies
+with zod, caps request size at 64 KB, and never waits for interactive approval.
+
+```bash
+PERMISCOPE_SIDECAR_TOKEN=dev-token npx permiscope serve
+# optional: PERMISCOPE_SIDECAR_HOST / PERMISCOPE_SIDECAR_PORT
+```
+
+Endpoints (all except `/health` require `Authorization: Bearer <token>`):
+
+| Endpoint | Body | Response |
+|---|---|---|
+| `POST /v1/decide` | `{ actionName, parameters?, reason? }` | `{ decision }` |
+| `POST /v1/execute` | `{ actionName, parameters?, reason? }` | `{ decision, success, output?, error? }` |
+| `GET /health` | — | `{ status: "ok" }` |
+
+Python clients need no third-party packages — see [python/README.md](../python/README.md).
+Non-loopback binding is refused unless the sidecar is created programmatically with
+`allowRemote: true`, and should only be done behind TLS with a strong token.
+
+---
+
 ## Best Practices
 
 -   **Intercept Early**: Wrap tool definitions directly so the agent doesn't even "see" raw execution results for blocked actions.
--   **Identify Callers**: Use the `agentId` parameter in `act()` or `wrap()` to distinguish between different units/agents in your system.
+-   **Identify Callers**: Supply a `principalProvider` in the adapter config. Caller-provided `agentId` values are not trusted for approval identity.
 -   **Handle Exceptions**: Always wrap calls in `try/catch`. A `BLOCK` or `REJECTED` decision will throw an error, which your agent should handle as "Action failed due to policy."
 -   **Fail Closed**: Ensure your agent defaults to a safe state if Permiscope blocks an action.

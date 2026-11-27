@@ -19,6 +19,8 @@ export type { AdapterConfig } from './adapters/PermiscopeAdapter';
 export { ExecutionGateway } from './gateway/ExecutionGateway';
 export { PolicyEngine } from './engine/PolicyEngine';
 export { defaultPolicy } from './defaults/defaultPolicy';
+export { createSidecar, startSidecar } from './sidecar/server';
+export type { SidecarOptions } from './sidecar/server';
 export * from './core/types';
 
 // ============================================

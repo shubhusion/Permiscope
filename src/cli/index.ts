@@ -2,6 +2,7 @@
 import * as path from 'path';
 import { createAgent } from '../index';
 import { AuditLogger } from '../logging/AuditLogger';
+import { defaultPolicy } from '../defaults/defaultPolicy';
 
 async function runDemo() {
   // Import dynamically or just move logic here to avoid circularity if index.ts exports createAgent
@@ -46,6 +47,20 @@ async function main() {
     process.exit(0);
   }
 
+  if (args[0] === 'serve') {
+    const token = process.env.PERMISCOPE_SIDECAR_TOKEN;
+    if (!token) {
+      console.error('Set PERMISCOPE_SIDECAR_TOKEN before starting the sidecar.');
+      process.exit(1);
+    }
+    const { startSidecar } = await import('../sidecar/server');
+    const host = process.env.PERMISCOPE_SIDECAR_HOST ?? '127.0.0.1';
+    const port = Number(process.env.PERMISCOPE_SIDECAR_PORT ?? 8787);
+    await startSidecar({ policy: defaultPolicy, token, host, port });
+    console.log(`Permiscope sidecar listening on http://${host}:${port}`);
+    return;
+  }
+
   if (args[0] === 'verify') {
     const logPath = path.resolve(args[1] || './logs/audit.log');
     const logger = new AuditLogger(path.dirname(logPath), false, { logPath });
@@ -67,6 +82,7 @@ async function main() {
     console.log('Example: permiscope run_command "echo hello"');
     console.log('         permiscope read_file "C:/Safe/data.txt"');
     console.log('         permiscope verify [audit.log]');
+    console.log('         permiscope serve  (needs PERMISCOPE_SIDECAR_TOKEN)');
     console.log('         permiscope --demo');
     process.exit(1);
   }

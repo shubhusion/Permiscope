@@ -12,6 +12,7 @@
     "audit:verify": "ts-node src/cli/index.ts verify",
     "demo": "node dist/cli/index.js --demo",
     "dev:dashboard": "ts-node src/dashboard/server.ts",
+    "serve": "ts-node src/cli/index.ts serve",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\""

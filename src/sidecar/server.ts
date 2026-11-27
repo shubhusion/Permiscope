@@ -1,0 +1,122 @@
+import express, { NextFunction, Request, Response } from 'express';
+import { Server } from 'http';
+import { timingSafeEqual } from 'crypto';
+import { z } from 'zod';
+import { PolicyEngine } from '../engine/PolicyEngine';
+import { ExecutionGateway, GatewayOptions, ActionExecutor } from '../gateway/ExecutionGateway';
+import { Action, Policy } from '../core/types';
+
+const ActionInputSchema = z.object({
+  actionName: z.string().min(1),
+  parameters: z.record(z.string(), z.unknown()).default({}),
+  reason: z.string().optional(),
+});
+
+type ActionInput = z.infer<typeof ActionInputSchema>;
+
+export interface SidecarOptions {
+  policy: Policy;
+  token: string;
+  host?: string;
+  port?: number;
+  maxBodyBytes?: number;
+  principalId?: string;
+  customExecutors?: Record<string, ActionExecutor>;
+  gatewayOptions?: Partial<GatewayOptions>;
+  allowRemote?: boolean;
+}
+
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+
+function authorized(provided: string | undefined, token: string): boolean {
+  if (!provided) return false;
+  const actual = Buffer.from(provided);
+  const expected = Buffer.from(`Bearer ${token}`);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function toAction(input: ActionInput, principalId: string): Action {
+  return {
+    actionName: input.actionName,
+    parameters: input.parameters as Record<string, any>,
+    agentId: principalId,
+    reason: input.reason,
+    timestamp: new Date(),
+  };
+}
+
+export function createSidecar(options: SidecarOptions): {
+  app: express.Express;
+  gateway: ExecutionGateway;
+} {
+  if (!options.token) throw new Error('Sidecar requires a bearer token');
+
+  const host = options.host ?? '127.0.0.1';
+  if (!options.allowRemote && !LOOPBACK_HOSTS.has(host)) {
+    throw new Error(`Refusing to bind non-loopback host '${host}' without allowRemote: true`);
+  }
+
+  const app = express();
+  app.disable('x-powered-by');
+  app.use(express.json({ limit: options.maxBodyBytes ?? 64 * 1024 }));
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/health') return next();
+    if (!authorized(req.headers.authorization, options.token)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+  });
+
+  const engine = new PolicyEngine(options.policy);
+  const gateway = new ExecutionGateway(engine, options.customExecutors ?? {}, {
+    ...options.gatewayOptions,
+    defaultPrincipalId:
+      options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar',
+    // A service has no TTY: never wait for an interactive human.
+    approver: options.gatewayOptions?.approver ?? (async () => false),
+    approvalTimeoutMs: options.gatewayOptions?.approvalTimeoutMs ?? 1000,
+  });
+
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  app.post('/v1/decide', async (req, res) => {
+    const parsed = ActionInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
+    }
+    const decision = await engine.evaluate(toAction(parsed.data, gatewayIdentity(options)));
+    res.json({ decision });
+  });
+
+  app.post('/v1/execute', async (req, res) => {
+    const parsed = ActionInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
+    }
+    const result = await gateway.run(toAction(parsed.data, gatewayIdentity(options)));
+    res.json(result);
+  });
+
+  app.use((error: Error & { type?: string }, _req: Request, res: Response, _next: NextFunction) => {
+    const status = error.type === 'entity.too.large' ? 413 : 400;
+    res.status(status).json({ error: status === 413 ? 'Request body too large' : 'Bad request' });
+  });
+
+  return { app, gateway };
+}
+
+function gatewayIdentity(options: SidecarOptions): string {
+  return options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar';
+}
+
+export function startSidecar(options: SidecarOptions): Promise<Server> {
+  const host = options.host ?? '127.0.0.1';
+  const port = options.port ?? 8787;
+  const { app } = createSidecar(options);
+  return new Promise((resolve) => {
+    const server = app.listen(port, host, () => resolve(server));
+  });
+}
