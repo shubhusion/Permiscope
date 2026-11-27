@@ -55,6 +55,9 @@ An issue is **not done** until all of the following pass:
 - [ ] CI is green on every matrix entry.
 - [ ] Manual verification steps, if any, are written in the PR body so others can repeat them.
 
+For documentation-only changes, verification means checked links, consistency with the
+code, and review — code tests are not required, but the PR body must say what was checked.
+
 "Works on my machine" is not evidence, and neither is a passing test that does not
 assert the behavior the issue describes.
 
