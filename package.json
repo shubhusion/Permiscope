@@ -1,6 +1,6 @@
 {
   "name": "permiscope",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "The Trust Layer for AI Agents - Secure gateway for autonomous tools.",
   "main": "dist/index.js",
   "bin": {
@@ -24,6 +24,7 @@
     "fixture:web": "ts-node scripts/generate-demo-fixture.ts",
     "bench": "ts-node scripts/benchmark.ts",
     "e2e": "ts-node scripts/e2e.ts",
+    "smoke:package": "ts-node scripts/smoke-package.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\""

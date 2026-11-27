@@ -93,10 +93,9 @@ graph LR
 npm install permiscope
 ```
 
-> The npm package is not published yet — install from this repository until it is
-> released to the registry. The Python client is installable from a clone with `pip install .`.
-> The package ships both CommonJS (`require`) and ESM (`import`) builds, verified by
-> `npm run check:package`.
+> Requires Node.js 24+. The package ships both CommonJS (`require`) and ESM (`import`)
+> builds, verified by `npm run check:package`. The Python client is installable from
+> a clone with `pip install .`.
 
 ### ⚡ 30-Second Quick Start
 
