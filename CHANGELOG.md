@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dual CommonJS/ESM package build with `check:package` and `prepublishOnly` (#46).
 - Composable typed policy builder with wildcards, roles and postconditions (#47).
 - Migration guide and explicit compatibility/deprecation policy (#49).
+- Deterministic fuzz tests and a repeatable benchmark script with recorded numbers (#48).
 - Browser/pages smoke check in the deploy workflow (#24).
 
 ### Changed

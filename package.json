@@ -22,6 +22,7 @@
     "build:web": "vite build",
     "typecheck:web": "tsc -p web/tsconfig.json --noEmit",
     "fixture:web": "ts-node scripts/generate-demo-fixture.ts",
+    "bench": "ts-node scripts/benchmark.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\""
