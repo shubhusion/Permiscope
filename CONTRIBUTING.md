@@ -13,8 +13,8 @@ core, so we keep a deliberately tight change process. Please read
 
 ## Development setup
 
-Use Node 24 or 26 for development (npm 10+). The published library itself supports
-Node 20 and newer; the newer dev requirement comes from the TypeScript toolchain.
+Use Node 24 or 26 (npm 10+). This matches `engines.node` and the CI matrix; older
+Node versions are not tested or supported.
 
 ```bash
 git clone https://github.com/shubhusion/permiscope.git

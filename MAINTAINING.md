@@ -57,8 +57,8 @@ CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 - `npm run eval` (36-case adversarial corpus)
 - `npm run typecheck:web` and `npm run build:web`
 
-Development needs Node 24+ for the TypeScript toolchain; the published library supports
-Node 20 and newer. Node 18 and 20 are not tested. `npm run audit:verify` and
+Node 24+ is required for both development and consumption; `engines.node` and CI agree.
+Node 18, 20 and 22 are not tested. `npm run audit:verify` and
 `npm run fixture:web` are available locally; add them to CI before calling them gates.
 
 Coverage excludes the CLI, package barrel, dashboard glue and scenario scripts;
