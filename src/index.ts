@@ -30,6 +30,7 @@ export type { Budget, BudgetRemaining, BudgetCheck } from './gateway/BudgetTrack
 export { PolicyEngine } from './engine/PolicyEngine';
 export { isPathWithin } from './engine/pathGuard';
 export { defaultPolicy } from './defaults/defaultPolicy';
+export { definePolicy, PolicyBuilder, ScopeBuilder } from './policy/builder';
 export { createSidecar, startSidecar } from './sidecar/server';
 export { verifiedPrincipalProvider, signHs256Token } from './auth/verifiedPrincipal';
 export type { JwtVerifierOptions } from './auth/verifiedPrincipal';

@@ -149,6 +149,31 @@ Reason codes: `ALLOWED`, `APPROVAL_REQUIRED`, `NO_MATCHING_SCOPE`,
 `ExecutionGateway.run()` exposes `reasonCode`, `matchedScope` and `remediation` on its
 result, and `PermiscopeAdapter` includes the reason in thrown errors.
 
+## Composable policy builder
+
+Policies can still be plain objects. For larger policies, `definePolicy()` provides a
+typed builder that produces the same shape:
+
+```typescript
+import { definePolicy } from 'permiscope';
+
+const policy = definePolicy()
+  .scope('read_file')
+    .allow()
+    .whenPath(['/tmp'])
+    .withRoles(['analyst'])
+  .done()
+  .scope('mcp:*')
+    .requireApproval()
+    .withValidator((action) => action.parameters.toolName !== 'delete_all')
+  .done()
+  .build();
+```
+
+`build()` returns a plain `Policy`, so `PolicyEngine`, `PermiscopeAdapter` and the
+sidecar accept it without changes. The builder copies scope data; mutating the builder
+after `build()` does not change the returned policy.
+
 ## Post-conditions
 
 A scope can declare checks that run **after** the executor finishes. They verify that
