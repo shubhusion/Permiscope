@@ -29,12 +29,17 @@ export interface ApprovalRequest {
 export interface GatewayResult {
   decision: PermissionDecision;
   success: boolean;
+  /** Postconditions detect violations after execution; the side effect stays committed.
+   * Always set by `run()`; optional to keep custom GatewayResult producers compatible. */
+  sideEffects?: 'none' | 'committed';
   output?: any;
   error?: string;
   reasonCode?: string;
   matchedScope?: string;
   remediation?: string;
   budgetRemaining?: BudgetRemaining;
+  /** True when an optional postcondition compensation hook succeeded. */
+  compensated?: boolean;
 }
 
 export interface GatewayOptions {
@@ -212,6 +217,7 @@ export class ExecutionGateway {
       return {
         decision: 'BLOCK',
         success: false,
+        sideEffects: 'none',
         reasonCode: 'BUDGET_EXCEEDED',
         error: 'Principal budget exceeded',
       };
@@ -224,6 +230,8 @@ export class ExecutionGateway {
     let success = false;
     let output = null;
     let error = undefined;
+    let executed = false;
+    let compensated = false;
 
     // Re-resolve file paths immediately before execution and use the canonical
     // path for the actual I/O. This closes the gap between the policy-time
@@ -275,6 +283,7 @@ export class ExecutionGateway {
         success = true;
       } else {
         try {
+          executed = true;
           output = await this.executeAction(actionForExecution, executor);
           success = true;
 
@@ -290,6 +299,14 @@ export class ExecutionGateway {
                 success = false;
                 error = `Postcondition failed: ${postcondition.description ?? 'check'}`;
                 reasonCode = 'POSTCONDITION_FAILED';
+                if (postcondition.compensate) {
+                  try {
+                    await postcondition.compensate(actionForExecution, output);
+                    compensated = true;
+                  } catch (compensationError: any) {
+                    error += `; compensation failed: ${compensationError.message}`;
+                  }
+                }
                 break;
               }
             }
@@ -319,12 +336,14 @@ export class ExecutionGateway {
     return {
       decision,
       success,
+      sideEffects: executed ? 'committed' : 'none',
       output,
       error,
       reasonCode,
       matchedScope,
       remediation,
       budgetRemaining,
+      ...(compensated ? { compensated: true } : {}),
     };
   }
 

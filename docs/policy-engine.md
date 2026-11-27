@@ -203,8 +203,14 @@ import { isPathWithin } from 'permiscope';
 ```
 
 A failed or throwing post-condition makes the result unsuccessful with reason code
-`POSTCONDITION_FAILED` and writes that outcome to the audit chain. Post-conditions are
-additive; existing policies without them behave exactly as before.
+`POSTCONDITION_FAILED` and writes that outcome to the audit chain. **Detection is the
+guarantee, not prevention:** the executor has already run, and every `GatewayResult`
+reports `sideEffects: 'committed'` for such actions. A post-condition can supply an
+optional `compensate(action, output)` hook for best-effort rollback; when it succeeds
+the result includes `compensated: true`. Rollback is not guaranteed — design executors
+to be idempotent or externally reversible.
+
+Post-conditions are additive; existing policies without them behave exactly as before.
 
 ## Budgets
 
