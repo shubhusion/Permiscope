@@ -46,6 +46,10 @@ export interface AuditLogEntry {
   agentId: string;
   action: Action;
   decision: PermissionDecision;
+  /** INTENT is written before any side effect; RESULT records the outcome. */
+  phase?: 'INTENT' | 'RESULT';
+  /** Links a RESULT to the INTENT record it follows. */
+  intentHash?: string;
   result?: any;
   previousHash?: string;
   signature?: string;

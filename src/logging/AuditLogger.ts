@@ -177,7 +177,11 @@ export class AuditLogger {
     } catch (error) {
       console.error('Failed to write audit log:', error);
       if (this.strictMode) {
-        throw new Error(`Audit log write failed: ${error}. Action blocked by strict logging mode.`);
+        const suffix =
+          (entry as { phase?: string }).phase === 'INTENT'
+            ? 'Action blocked by strict logging mode.'
+            : 'The action ran, but its result could not be recorded.';
+        throw new Error(`Audit log write failed: ${error}. ${suffix}`);
       }
     } finally {
       if (release) await release();

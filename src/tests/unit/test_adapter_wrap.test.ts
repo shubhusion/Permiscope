@@ -22,7 +22,7 @@ describe('PermiscopeAdapter.wrap', () => {
     jest.restoreAllMocks();
   });
 
-  test('executes once and writes one audit entry for an allowed action', async () => {
+  test('executes once and writes paired audit entries for an allowed action', async () => {
     const calls: string[] = [];
     const adapter = new PermiscopeAdapter({ policy, defaultAgentId: 'wrap-test' });
     const safe = adapter.wrap('allowed_op', async (params) => {
@@ -32,7 +32,8 @@ describe('PermiscopeAdapter.wrap', () => {
 
     await expect(safe({ value: 'x' })).resolves.toBe('done:x');
     expect(calls).toEqual(['x']);
-    expect(auditLog).toHaveBeenCalledTimes(1);
+    expect(auditLog).toHaveBeenCalledTimes(2);
+    expect(auditLog.mock.calls.map(([entry]) => entry.phase)).toEqual(['INTENT', 'RESULT']);
   });
 
   test('does not execute a blocked action', async () => {
@@ -45,7 +46,8 @@ describe('PermiscopeAdapter.wrap', () => {
 
     await expect(safe({})).rejects.toThrow('Permiscope Blocked Action');
     expect(executed).toBe(false);
-    expect(auditLog).toHaveBeenCalledTimes(1);
+    expect(auditLog).toHaveBeenCalledTimes(2);
+    expect(auditLog.mock.calls.map(([entry]) => entry.phase)).toEqual(['INTENT', 'RESULT']);
   });
 
   test('uses a cached approval and still executes only once', async () => {
@@ -59,7 +61,8 @@ describe('PermiscopeAdapter.wrap', () => {
 
     await expect(safe({})).resolves.toBe('approved');
     expect(calls).toBe(1);
-    expect(auditLog).toHaveBeenCalledTimes(1);
+    expect(auditLog).toHaveBeenCalledTimes(2);
+    expect(auditLog.mock.calls.map(([entry]) => entry.phase)).toEqual(['INTENT', 'RESULT']);
   });
 
   test('preserves shadow mode for a blocked action', async () => {
@@ -76,6 +79,7 @@ describe('PermiscopeAdapter.wrap', () => {
 
     await expect(safe({})).resolves.toBe('[SHADOW] Action appeared successful.');
     expect(executed).toBe(false);
-    expect(auditLog).toHaveBeenCalledTimes(1);
+    expect(auditLog).toHaveBeenCalledTimes(2);
+    expect(auditLog.mock.calls.map(([entry]) => entry.phase)).toEqual(['INTENT', 'RESULT']);
   });
 });

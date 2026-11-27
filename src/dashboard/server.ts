@@ -104,6 +104,9 @@ app.get('/api/logs', (req, res) => {
         }
       })
       .filter((l) => l !== null)
+      // INTENT records are an internal pre-execution marker; the console shows
+      // the completed RESULT for each action. Use the audit log for raw access.
+      .filter((l) => l.phase !== 'INTENT')
       .reverse(); // Newest first
 
     if (req.query.raw !== '1') {
