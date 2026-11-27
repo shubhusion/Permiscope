@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import { spawn } from 'child_process';
 import { Action, PermissionDecision } from '../core/types';
 import { parseCommand } from '../engine/commandPolicy';
+import { resolveGuardedPath } from '../engine/pathGuard';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { AuditLogger } from '../logging/AuditLogger';
 import { ApprovalCache } from './ApprovalCache';
@@ -224,6 +225,33 @@ export class ExecutionGateway {
     let output = null;
     let error = undefined;
 
+    // Re-resolve file paths immediately before execution and use the canonical
+    // path for the actual I/O. This closes the gap between the policy-time
+    // realpath check and the open() performed by the executor.
+    let actionForExecution = governedAction;
+    if (
+      decision === 'ALLOW' &&
+      !dryRun &&
+      (governedAction.actionName === 'read_file' || governedAction.actionName === 'write_file')
+    ) {
+      const roots = Array.from(
+        new Set(
+          this.policyEngine.scopesFor(governedAction).flatMap((scope) => scope.allowedPaths ?? []),
+        ),
+      );
+      const guarded = resolveGuardedPath(governedAction.parameters.path, roots);
+      if (!guarded.ok) {
+        decision = 'BLOCK';
+        reasonCode = 'GUARDRAIL_PATH';
+        error = guarded.reason;
+      } else {
+        actionForExecution = {
+          ...governedAction,
+          parameters: { ...governedAction.parameters, path: guarded.path },
+        };
+      }
+    }
+
     // Bind the eventual result to the decision made here. The INTENT record is
     // written before any side effect so strict logging can genuinely block it.
     const intentHash = createHash('sha256')
@@ -247,14 +275,14 @@ export class ExecutionGateway {
         success = true;
       } else {
         try {
-          output = await this.executeAction(governedAction, executor);
+          output = await this.executeAction(actionForExecution, executor);
           success = true;
 
-          for (const scope of this.policyEngine.scopesFor(governedAction)) {
+          for (const scope of this.policyEngine.scopesFor(actionForExecution)) {
             for (const postcondition of scope.postconditions ?? []) {
               let passed = false;
               try {
-                passed = await postcondition.check(governedAction, output);
+                passed = await postcondition.check(actionForExecution, output);
               } catch {
                 passed = false;
               }

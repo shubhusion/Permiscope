@@ -52,9 +52,11 @@ No scopes match → BLOCK (default deny)
   via `path.relative` containment, not string prefixes.
 - Comparison is case-insensitive **only on Windows**; lowercasing on POSIX would widen
   access on a case-sensitive filesystem.
-- Residual risk: resolving and writing are separate operations, so an attacker who can
-  replace a path between the check and the write (TOCTOU) can still escape. Use
-  OS-level isolation for adversarial environments.
+- The gateway re-resolves the path immediately before I/O and opens the canonical
+  path, closing the evaluation-to-open TOCTOU gap. A malicious final symlink is refused.
+- Residual risk: a swap of the already-canonical path after resolution, or a hostile
+  filesystem that lies about `realpath`, is outside the library's control. Use OS-level
+  isolation for adversarial environments.
 
 ### Command Patterns
 
