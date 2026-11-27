@@ -32,4 +32,7 @@ export interface AuditLogEntry {
   decision: PermissionDecision;
   result?: any;
   previousHash?: string;
+  signature?: string;
+  sequence?: number;
+  keyId?: string;
 }

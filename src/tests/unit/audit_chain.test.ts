@@ -1,0 +1,113 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { AuditLogger } from '../../logging/AuditLogger';
+import { ApprovalCache } from '../../gateway/ApprovalCache';
+import { ExecutionGateway } from '../../gateway/ExecutionGateway';
+import { PolicyEngine } from '../../engine/PolicyEngine';
+import { Action } from '../../core/types';
+
+function entry(): Omit<Parameters<AuditLogger['log']>[0], never> {
+  return {
+    timestamp: new Date().toISOString(),
+    agentId: 'audit-test',
+    action: { actionName: 'safe', parameters: {}, agentId: 'audit-test', timestamp: new Date() },
+    decision: 'ALLOW',
+  };
+}
+
+function action(): Action {
+  return {
+    actionName: 'safe',
+    parameters: {},
+    agentId: 'audit-test',
+    timestamp: new Date(),
+  };
+}
+
+describe('audit chain', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'permiscope-audit-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a signed chain with sequence numbers verifies', async () => {
+    const logger = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1' });
+    await logger.log(entry());
+    await logger.log(entry());
+    await logger.log(entry());
+
+    expect(logger.verifyChain()).toEqual({ valid: true, errors: [] });
+  });
+
+  test('tampering with a line breaks verification', async () => {
+    const logger = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1' });
+    await logger.log(entry());
+    await logger.log(entry());
+
+    const logPath = path.join(dir, 'audit.log');
+    const lines = fs.readFileSync(logPath, 'utf-8').trim().split('\n');
+    const parsed = JSON.parse(lines[0]);
+    parsed.decision = 'BLOCK';
+    lines[0] = JSON.stringify(parsed);
+    fs.writeFileSync(logPath, lines.join('\n') + '\n');
+
+    expect(logger.verifyChain().valid).toBe(false);
+  });
+
+  test('truncating the tail is detected by the head record', async () => {
+    const logger = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1' });
+    await logger.log(entry());
+    await logger.log(entry());
+    await logger.log(entry());
+
+    const logPath = path.join(dir, 'audit.log');
+    const lines = fs.readFileSync(logPath, 'utf-8').trim().split('\n');
+    fs.writeFileSync(logPath, lines.slice(0, 2).join('\n') + '\n');
+
+    const result = logger.verifyChain();
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((error) => error.includes('Tail truncated'))).toBe(true);
+  });
+
+  test('key rotation keeps old entries verifiable', async () => {
+    const keyRing = { v1: 'k1', v2: 'k2' };
+    const first = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1', keyRing });
+    await first.log(entry());
+    await first.log(entry());
+
+    const rotated = new AuditLogger(dir, false, { secret: 'k2', keyId: 'v2', keyRing });
+    expect(rotated.verifyChain().valid).toBe(true);
+    await rotated.log(entry());
+    expect(rotated.verifyChain().valid).toBe(true);
+  });
+
+  test('an unknown keyId makes verification fail closed', async () => {
+    const logger = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1' });
+    await logger.log(entry());
+
+    const withoutKey = new AuditLogger(dir, false, { secret: 'k2', keyId: 'v2' });
+    expect(withoutKey.verifyChain().valid).toBe(false);
+  });
+
+  test('strict logging failure propagates and blocks the action', async () => {
+    const logger = new AuditLogger(dir, true, { secret: 'k1', keyId: 'v1' });
+    jest.spyOn(logger, 'log').mockRejectedValue(new Error('disk full'));
+    const gateway = new ExecutionGateway(
+      new PolicyEngine({ scopes: [{ actionName: 'safe', decision: 'ALLOW' }] }),
+      { safe: async () => 'ok' },
+      {
+        auditLogger: logger,
+        approvalCache: new ApprovalCache(dir),
+        defaultPrincipalId: 'audit-test',
+      },
+    );
+
+    await expect(gateway.run(action())).rejects.toThrow('disk full');
+  });
+});
