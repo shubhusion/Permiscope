@@ -73,15 +73,18 @@ export function createSidecar(options: SidecarOptions): {
     next();
   });
 
-  const engine = new PolicyEngine(options.policy);
-  const gateway = new ExecutionGateway(engine, options.customExecutors ?? {}, {
-    ...options.gatewayOptions,
-    defaultPrincipalId:
-      options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar',
-    // A service has no TTY: never wait for an interactive human.
-    approver: options.gatewayOptions?.approver ?? (async () => false),
-    approvalTimeoutMs: options.gatewayOptions?.approvalTimeoutMs ?? 1000,
-  });
+  const gateway = new ExecutionGateway(
+    new PolicyEngine(options.policy),
+    options.customExecutors ?? {},
+    {
+      ...options.gatewayOptions,
+      defaultPrincipalId:
+        options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar',
+      // A service has no TTY: never wait for an interactive human.
+      approver: options.gatewayOptions?.approver ?? (async () => false),
+      approvalTimeoutMs: options.gatewayOptions?.approvalTimeoutMs ?? 1000,
+    },
+  );
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
@@ -94,7 +97,7 @@ export function createSidecar(options: SidecarOptions): {
     }
     const token = bearerToken(req.headers.authorization);
     const decision = await withRequestContext({ token }, () =>
-      engine.evaluate(toAction(parsed.data, gatewayIdentity(options))),
+      gateway.decide(toAction(parsed.data, gatewayIdentity(options))),
     );
     res.json({ decision });
   });
