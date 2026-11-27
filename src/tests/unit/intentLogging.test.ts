@@ -63,7 +63,7 @@ describe('intent-before-execution logging', () => {
     expect(lines[0].intentHash).toBeDefined();
     expect(lines[1].intentHash).toBe(lines[0].intentHash);
     expect(lines[0].result).toEqual({ planned: true });
-    expect(lines[1].result).toMatchObject({ success: true, output: 'ok' });
+    expect(lines[1].result).toMatchObject({ success: true, output: '[redacted]' });
     expect(logger.verifyChain()).toEqual({ valid: true, errors: [] });
   });
 

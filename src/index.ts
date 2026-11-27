@@ -39,6 +39,8 @@ export { isPathWithin, resolveGuardedPath } from './engine/pathGuard';
 export type { GuardedPathResult } from './engine/pathGuard';
 export { withRequestContext, requestContext, requestToken } from './core/requestContext';
 export type { RequestContext } from './core/requestContext';
+export { AuditLogger, redactSensitive } from './logging/AuditLogger';
+export type { AuditLoggerOptions } from './logging/AuditLogger';
 export { defaultPolicy } from './defaults/defaultPolicy';
 export { definePolicy, PolicyBuilder, ScopeBuilder } from './policy/builder';
 export { createSidecar, startSidecar } from './sidecar/server';

@@ -9,7 +9,7 @@ const GENESIS = '0'.repeat(64);
 const SENSITIVE_KEY = /(token|secret|password|passwd|authorization|api[-_]?key|credential|bearer)/i;
 const SECRET_VALUE = /^(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|Bearer\s+\S+)$/i;
 
-function redactSensitive(value: any, seen = new WeakSet<object>()): any {
+export function redactSensitive(value: any, seen = new WeakSet<object>()): any {
   if (value === null || typeof value !== 'object') {
     return typeof value === 'string' && SECRET_VALUE.test(value) ? '[redacted]' : value;
   }
@@ -32,6 +32,32 @@ export interface AuditLoggerOptions {
   keyId?: string;
   keyRing?: Record<string, string>;
   logPath?: string;
+  /** Result fields whose values may be logged. Defaults to none: output and error are redacted. */
+  allowedOutputKeys?: string[];
+}
+
+/** Logs only metadata about an execution unless the host opts into specific result fields. */
+function redactResult(result: any, allowed: Set<string>): any {
+  if (result === null || typeof result !== 'object') return result;
+  if (Array.isArray(result)) return result.map((item) => redactResult(item, allowed));
+  const out: Record<string, any> = {};
+  for (const [key, value] of Object.entries(result)) {
+    if (
+      key === 'success' ||
+      key === 'dryRun' ||
+      key === 'sideEffects' ||
+      key === 'replayed' ||
+      key === 'compensated' ||
+      key === 'planned'
+    ) {
+      out[key] = value;
+    } else if (allowed.has(key)) {
+      out[key] = redactSensitive(value);
+    } else {
+      out[key] = '[redacted]';
+    }
+  }
+  return out;
 }
 
 function envKeyRing(): Record<string, string> {
@@ -51,6 +77,7 @@ export class AuditLogger {
   private strictMode: boolean;
   private keyId: string;
   private keyRing: Map<string, string>;
+  private allowedOutputKeys: Set<string>;
 
   constructor(
     baseDir: string = './logs',
@@ -65,6 +92,7 @@ export class AuditLogger {
     this.strictMode = strictMode;
     this.keyId = options.keyId ?? process.env.PERMISCOPE_AUDIT_KEY_ID ?? 'default';
     this.keyRing = new Map(Object.entries(options.keyRing ?? envKeyRing()));
+    this.allowedOutputKeys = new Set(options.allowedOutputKeys ?? []);
     this.secret =
       options.secret ?? this.keyRing.get(this.keyId) ?? process.env.PERMISCOPE_AUDIT_SECRET ?? null;
 
@@ -155,6 +183,9 @@ export class AuditLogger {
       // Defence in depth: credentials never belong on the domain object, but if
       // one slips into a parameter or result, scrub it before it hits the log.
       const safeEntry = redactSensitive(entry);
+      if (safeEntry.result !== undefined) {
+        safeEntry.result = redactResult(safeEntry.result, this.allowedOutputKeys);
+      }
       const full: AuditLogEntry = { ...safeEntry, sequence, previousHash: this.lastHash };
       if (this.secret) {
         full.keyId = this.keyId;
