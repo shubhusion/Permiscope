@@ -1,5 +1,12 @@
 import { PolicyEngine } from '../engine/PolicyEngine';
-import { ExecutionGateway, ActionExecutor } from '../gateway/ExecutionGateway';
+import {
+  ExecutionGateway,
+  ActionExecutor,
+  PrincipalProvider,
+  Approver,
+} from '../gateway/ExecutionGateway';
+import { ApprovalCache } from '../gateway/ApprovalCache';
+import { AuditLogger } from '../logging/AuditLogger';
 import { Policy, Action } from '../core/types';
 import { defaultPolicy } from '../defaults/defaultPolicy';
 
@@ -8,6 +15,11 @@ export interface AdapterConfig {
   defaultAgentId?: string;
   shadowMode?: boolean;
   customExecutors?: Record<string, ActionExecutor>;
+  principalProvider?: PrincipalProvider;
+  approver?: Approver;
+  approvalTimeoutMs?: number;
+  approvalCache?: ApprovalCache;
+  auditLogger?: AuditLogger;
 }
 
 /**
@@ -30,7 +42,14 @@ export class PermiscopeAdapter {
 
   constructor(config: AdapterConfig = {}) {
     this.engine = new PolicyEngine(config.policy || defaultPolicy);
-    this.gateway = new ExecutionGateway(this.engine, config.customExecutors);
+    this.gateway = new ExecutionGateway(this.engine, config.customExecutors, {
+      defaultPrincipalId: config.defaultAgentId || 'external-system',
+      principalProvider: config.principalProvider,
+      approver: config.approver,
+      approvalTimeoutMs: config.approvalTimeoutMs,
+      approvalCache: config.approvalCache,
+      auditLogger: config.auditLogger,
+    });
     this.defaultAgentId = config.defaultAgentId || 'external-system';
     this.shadowMode = config.shadowMode || false;
   }
@@ -42,11 +61,11 @@ export class PermiscopeAdapter {
    * @param agentId Optional identifier for the calling system
    * @returns Promise resolving to the output or throwing an error if blocked/failed.
    */
-  async act(actionName: string, params: Record<string, any>, agentId?: string): Promise<any> {
+  async act(actionName: string, params: Record<string, any>, _agentId?: string): Promise<any> {
     const action: Action = {
       actionName: actionName as any,
       parameters: params,
-      agentId: agentId || this.defaultAgentId,
+      agentId: this.defaultAgentId,
       timestamp: new Date(),
     };
 
@@ -84,12 +103,12 @@ export class PermiscopeAdapter {
   wrap<T>(
     actionName: string,
     executor: (params: Record<string, any>) => Promise<T>,
-  ): (params: Record<string, any>, agentId?: string) => Promise<T> {
-    return async (params: Record<string, any>, agentId?: string): Promise<T> => {
+  ): (params: Record<string, any>, _agentId?: string) => Promise<T> {
+    return async (params: Record<string, any>, _agentId?: string): Promise<T> => {
       const action: Action = {
         actionName: actionName as any,
         parameters: params,
-        agentId: agentId || this.defaultAgentId,
+        agentId: this.defaultAgentId,
         timestamp: new Date(),
       };
 
@@ -146,7 +165,7 @@ export function withPermiscope<T>(
   actionName: string,
   executor: (params: Record<string, any>) => Promise<T>,
   config?: AdapterConfig,
-): (params: Record<string, any>, agentId?: string) => Promise<T> {
+): (params: Record<string, any>, _agentId?: string) => Promise<T> {
   const adapter = new PermiscopeAdapter(config);
   return adapter.wrap(actionName, executor);
 }

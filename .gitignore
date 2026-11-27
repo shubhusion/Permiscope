@@ -34,3 +34,5 @@ coverage/
 # Cache
 .npm
 .cache
+
+data/

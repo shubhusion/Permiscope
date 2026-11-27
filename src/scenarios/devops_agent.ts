@@ -49,7 +49,9 @@ async function runDevOpsScenario() {
     // Let's use a mocked "Pre-Approved" state again to show the flow completion.
 
     const params = { path: NGINX_CONF, content: 'worker_processes 4;' };
-    (adapter.getGateway() as any).approvalCache.approve('devops-bot', 'write_file', params);
+    const cache = (adapter.getGateway() as any).approvalCache;
+    await cache.requestApproval('devops-bot', 'write_file', params);
+    await cache.approve('devops-bot', 'write_file', params);
     console.log('   (Simulating Manager Approval via Dashboard...)');
 
     await adapter.act('write_file', params);

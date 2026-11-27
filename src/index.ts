@@ -48,11 +48,17 @@ export function createAgent(config?: {
   name?: string;
   shadowMode?: boolean;
   executors?: Record<string, (params: any) => Promise<any>>;
+  approver?: import('./gateway/ExecutionGateway').Approver;
+  principalProvider?: import('./gateway/ExecutionGateway').PrincipalProvider;
+  approvalTimeoutMs?: number;
 }) {
   return new PermiscopeAdapter({
     policy: config?.policy || defaultPolicy,
     defaultAgentId: config?.name || 'demo-agent',
     shadowMode: config?.shadowMode,
     customExecutors: config?.executors,
+    approver: config?.approver,
+    principalProvider: config?.principalProvider,
+    approvalTimeoutMs: config?.approvalTimeoutMs,
   });
 }

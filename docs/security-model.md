@@ -20,6 +20,8 @@ Permiscope is a **mediation layer**, not a sandbox. It intercepts and controls a
 | **Shell injection** | AST tokenization; operators and nested shells blocked; argv execution without a shell |
 | **Dashboard CSRF** | CORS restricted to localhost |
 | **Unauthorized approvals** | Token-based authentication |
+| **Approval spoofing** | Authenticated principal IDs; caller-supplied agentId ignored |
+| **Hanging approvals** | Hard timeout; non-interactive environments fail closed |
 
 ## What is NOT Protected
 

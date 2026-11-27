@@ -36,11 +36,12 @@ interface ApprovalRequest {
 ## Approval Key Generation
 
 Keys are deterministic and based on:
-- Agent ID
+- **Authenticated principal ID** — provided by the host via `principalProvider`, never the caller-controlled `agentId` on the action
 - Action name
 - Parameters (using `fast-json-stable-stringify`)
 
-This ensures the same action from the same agent produces the same key.
+This ensures the same action from the same principal produces the same key. A caller
+claiming another agent's ID cannot reuse that principal's approval.
 
 ## CLI Polling
 
@@ -54,8 +55,13 @@ Do you approve this action? (y/n)
 ```
 
 The CLI waits for:
-1. Direct console input (`y`/`n`)
-2. Dashboard approval (polled every 2 seconds)
+1. Direct console input (`y`/`n`) when stdin is a TTY
+2. Dashboard approval (polled every 500 ms by default)
+
+If stdin is not a TTY, no prompt is opened. The gateway waits only until
+`approvalTimeoutMs` (30 s by default) and then **fails closed**. `gateway.close()`
+cancels any in-flight wait immediately. An injected `approver` callback replaces both
+the prompt and the polling path.
 
 ## Dashboard Approval
 
@@ -70,9 +76,11 @@ The web dashboard allows managing approvals remotely:
 
 | Behavior | Description |
 |----------|-------------|
-| **Auto-expiration** | Approvals expire after TTL (default: 1 hour) |
-| **Reuse** | Same action reuses existing approval |
+| **Auto-expiration** | Approvals and rejections both expire after TTL (default: 1 hour) |
+| **Reuse** | Same action from the same principal reuses an unexpired approval |
+| **No pre-approval** | `approve()` only works on an existing `PENDING` request |
 | **Revocation** | Dashboard can revoke approvals |
+| **Corrupt cache** | Parsed as empty (fail closed), never treated as allow-all |
 | **Persistence** | Saved to `data/approvals.json` |
 
 ## TTL Configuration
@@ -84,8 +92,9 @@ const cache = new ApprovalCache('./data', 30 * 60 * 1000); // 30 min
 ## Concurrency Safety
 
 - File locking via `proper-lockfile`
-- All operations are `async` with lock acquisition
-- Prevents race conditions between CLI and Dashboard
+- One lock is held across the entire read-modify-write operation, not separately
+  around load and save
+- Prevents lost updates between CLI and Dashboard
 
 ## Best Practices
 
