@@ -46,6 +46,8 @@ export interface GatewayOptions {
   auditLogger?: AuditLogger;
   budget?: Budget;
   budgetTracker?: BudgetTracker;
+  /** Present blocked actions as successful without executing them. Host-only. */
+  shadowMode?: boolean;
 }
 
 export class ExecutionGateway {
@@ -61,6 +63,7 @@ export class ExecutionGateway {
   private closed = false;
   private cancelWaits = new Set<() => void>();
   private budgetTracker?: BudgetTracker;
+  private shadowMode: boolean;
 
   constructor(
     policyEngine: PolicyEngine,
@@ -77,6 +80,7 @@ export class ExecutionGateway {
     this.approvalTimeoutMs = options.approvalTimeoutMs ?? 30_000;
     this.approvalPollIntervalMs = options.approvalPollIntervalMs ?? 500;
     this.budgetTracker = options.budgetTracker;
+    this.shadowMode = options.shadowMode ?? false;
     if (!this.budgetTracker && options.budget) {
       this.budgetTracker = new BudgetTracker({ [this.defaultPrincipalId]: options.budget });
     }
@@ -172,7 +176,7 @@ export class ExecutionGateway {
       }
     }
 
-    const shadow = decision === 'BLOCK' && !!(governedAction as any).shadowMode;
+    const shadow = decision === 'BLOCK' && this.shadowMode;
     if (shadow) decision = 'SHADOW_BLOCK';
 
     return {
