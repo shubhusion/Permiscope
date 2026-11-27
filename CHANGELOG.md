@@ -48,6 +48,7 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
 - `ExecutionGateway.decide()` and `/v1/decide` now share principal verification, roles and budgets with execution (#64).
 - Explicit `when` (skip) and `guard` (deny) scope predicates replace fail-open validator misuse (#65).
 - Unsafe or invalid command regexes now fail closed at policy construction instead of being skipped (#66).
+- Shadow mode moved to host-only `GatewayOptions`; action-level `shadowMode` is ignored (#68).
 - Audit head record is HMAC-signed and verified with the key ring (#27).
 - GitHub Pages demo blank page caused by a case-mismatched asset base path (#24).
 - High-severity dependency advisories patched (#29).

@@ -38,7 +38,6 @@ export class PermiscopeAdapter {
   private engine: PolicyEngine;
   private gateway: ExecutionGateway;
   private defaultAgentId: string;
-  private shadowMode: boolean;
 
   constructor(config: AdapterConfig = {}) {
     this.engine = new PolicyEngine(config.policy || defaultPolicy);
@@ -49,9 +48,10 @@ export class PermiscopeAdapter {
       approvalTimeoutMs: config.approvalTimeoutMs,
       approvalCache: config.approvalCache,
       auditLogger: config.auditLogger,
+      // Shadow mode is a host configuration, never a caller-controlled field.
+      shadowMode: config.shadowMode ?? false,
     });
     this.defaultAgentId = config.defaultAgentId || 'external-system';
-    this.shadowMode = config.shadowMode || false;
   }
 
   /**
@@ -68,10 +68,6 @@ export class PermiscopeAdapter {
       agentId: this.defaultAgentId,
       timestamp: new Date(),
     };
-
-    if (this.shadowMode) {
-      (action as any).shadowMode = true;
-    }
 
     const result = await this.gateway.run(action);
 
@@ -111,10 +107,6 @@ export class PermiscopeAdapter {
         agentId: this.defaultAgentId,
         timestamp: new Date(),
       };
-
-      if (this.shadowMode) {
-        (action as any).shadowMode = true;
-      }
 
       // Every governed call goes through the gateway exactly once: policy,
       // approval, execution and audit stay on a single path.

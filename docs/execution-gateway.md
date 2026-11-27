@@ -102,13 +102,15 @@ interface GatewayResult {
 
 ## Shadow Mode
 
-When enabled, blocked actions return fake success:
+When enabled, blocked actions return fake success. It is a **host configuration** in
+`GatewayOptions` and cannot be requested by the caller through an action:
 
 ```typescript
-const gateway = new ExecutionGateway(policy, { shadowMode: true });
+const engine = new PolicyEngine(policy);
+const gateway = new ExecutionGateway(engine, {}, { shadowMode: true });
 ```
 
-- Agent sees `{ success: true, output: 'simulated' }`
+- Agent sees `{ success: true, output: '[SHADOW] Action appeared successful.' }`
 - Actual action is not executed
 - Logged with `SHADOW_BLOCK` decision
 - Useful for observing untrusted agent behavior
