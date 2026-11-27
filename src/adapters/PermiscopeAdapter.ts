@@ -77,7 +77,7 @@ export class PermiscopeAdapter {
 
     if (!result.success) {
       throw new Error(
-        `Permiscope Blocked Action: ${result.decision} - ${result.error || 'Policy Violation'}`,
+        `Permiscope Blocked Action: ${result.decision} (${result.reasonCode ?? 'Policy Violation'}) - ${result.error || result.remediation || 'Policy Violation'}`,
       );
     }
 
@@ -121,7 +121,7 @@ export class PermiscopeAdapter {
       const result = await this.gateway.run(action, false, executor);
       if (!result.success) {
         throw new Error(
-          `Permiscope Blocked Action: ${result.decision} - ${result.error || 'Policy Violation'}`,
+          `Permiscope Blocked Action: ${result.decision} (${result.reasonCode ?? 'Policy Violation'}) - ${result.error || result.remediation || 'Policy Violation'}`,
         );
       }
       return result.output as T;

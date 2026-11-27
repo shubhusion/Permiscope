@@ -132,6 +132,23 @@ const policy = {
 | Validator returns string | Must return boolean |
 | Path without trailing slash | Both `/tmp` and `/tmp/` work |
 
+## Decision reasons
+
+`evaluate()` still returns the bare decision for backwards compatibility. Use
+`evaluateDetailed()` when the agent needs to know why it was denied:
+
+```typescript
+const result = await engine.evaluateDetailed(action);
+// { decision: 'BLOCK', reasonCode: 'GUARDRAIL_PATH', matchedScope: 'read_file', remediation: '...' }
+```
+
+Reason codes: `ALLOWED`, `APPROVAL_REQUIRED`, `NO_MATCHING_SCOPE`,
+`NO_APPLICABLE_SCOPE`, `GUARDRAIL_PATH`, `GUARDRAIL_COMMAND`, `VALIDATOR_ERROR`,
+`SCOPE_BLOCK`, `APPROVAL_GRANTED`, `APPROVAL_NOT_GRANTED`.
+
+`ExecutionGateway.run()` exposes `reasonCode`, `matchedScope` and `remediation` on its
+result, and `PermiscopeAdapter` includes the reason in thrown errors.
+
 ## Debugging
 
 Enable logging to see evaluation:
