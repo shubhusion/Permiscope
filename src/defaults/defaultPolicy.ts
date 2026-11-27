@@ -8,12 +8,12 @@ const READ_ROOTS = [WORKSPACE, TEMP_DIR];
 export const defaultPolicy: Policy = {
   scopes: [
     // 1. Specific Sensitive Files -> Require Approval (MUST COME FIRST)
-    // This scope ONLY matches if the validator returns true (i.e., file is sensitive)
+    // This scope ONLY matches when the predicate says the file is sensitive.
     {
       actionName: 'read_file',
       decision: 'REQUIRE_APPROVAL',
       allowedPaths: READ_ROOTS,
-      validator: (action) => {
+      when: (action) => {
         const p = (action.parameters.path || '').toLowerCase();
         // Return true for sensitive files that need approval
         return (
