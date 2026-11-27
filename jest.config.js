@@ -12,14 +12,17 @@ module.exports = {
     '!src/tests/**',
     '!src/scenarios/**',
     '!src/dashboard/**',
+    // CLI and package barrel are exercised via smoke tests, not unit tests.
+    '!src/index.ts',
+    '!src/cli/**',
   ],
   coverageReporters: ['text-summary'],
   coverageThreshold: {
     global: {
-      statements: 60,
-      branches: 60,
-      functions: 65,
-      lines: 65,
+      statements: 70,
+      branches: 65,
+      functions: 72,
+      lines: 72,
     },
   },
 };
