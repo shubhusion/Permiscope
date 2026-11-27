@@ -25,28 +25,31 @@ export class PolicyEngine {
     // If any scope says REQUIRE_APPROVAL, final is REQUIRE_APPROVAL.
     // Otherwise, ALLOW.
     let finalDecision: PermissionDecision = 'ALLOW';
+    let applied = false;
 
     for (const scope of matchingScopes) {
       let scopeDecision = scope.decision;
 
-      // Check guardrails for ALLOW and REQUIRE_APPROVAL scopes
       if (scopeDecision === 'ALLOW' || scopeDecision === 'REQUIRE_APPROVAL') {
-        const passed = await this.checkGuardrails(action, scope);
-        if (!passed) {
+        const outcome = await this.checkGuardrails(action, scope);
+        if (outcome === 'block') {
           scopeDecision = 'BLOCK';
+        } else if (outcome === 'skip') {
+          // A validator returning false means this scope does not apply.
+          continue;
         }
       }
 
-      // Apply priority
+      applied = true;
       if (scopeDecision === 'BLOCK') {
-        return 'BLOCK'; // Highest priority, return immediately
+        return 'BLOCK';
       } else if (scopeDecision === 'REQUIRE_APPROVAL') {
         finalDecision = 'REQUIRE_APPROVAL';
       }
-      // ALLOW is the lowest priority, already set as default
     }
 
-    return finalDecision;
+    // Every matching scope declined to apply — default deny.
+    return applied ? finalDecision : 'BLOCK';
   }
 
   private findMatchingScopes(action: Action): PermissionScope[] {
@@ -54,33 +57,29 @@ export class PolicyEngine {
     return this.policy.scopes.filter((s) => s.actionName === action.actionName);
   }
 
-  private async checkGuardrails(action: Action, scope: PermissionScope): Promise<boolean> {
-    // 1. Path Restrictions (with normalization)
+  private async checkGuardrails(
+    action: Action,
+    scope: PermissionScope,
+  ): Promise<'pass' | 'block' | 'skip'> {
     if (action.actionName === 'read_file' || action.actionName === 'write_file') {
-      if (!this.isValidPath(action.parameters.path, scope.allowedPaths)) {
-        return false;
-      }
+      if (!this.isValidPath(action.parameters.path, scope.allowedPaths)) return 'block';
     }
 
-    // 2. Command Restrictions
     if (action.actionName === 'run_command') {
-      if (this.isBlockedCommand(action.parameters.command, scope.blockedCommandPatterns)) {
-        return false;
-      }
+      if (this.isBlockedCommand(action.parameters.command, scope.blockedCommandPatterns))
+        return 'block';
     }
 
-    // 3. Dynamic Validator (Policy-as-Code)
     if (scope.validator) {
       try {
-        const isValid = await scope.validator(action);
-        if (!isValid) return false;
+        if (!(await scope.validator(action))) return 'skip';
       } catch (e) {
         console.error('Policy validator error:', e);
-        return false; // Fail safe
+        return 'block';
       }
     }
 
-    return true;
+    return 'pass';
   }
 
   private isValidPath(inputPath: string | undefined, allowedPaths: string[] | undefined): boolean {

@@ -61,6 +61,18 @@ async function main() {
     return;
   }
 
+  if (args[0] === 'eval') {
+    const { runEval } = await import('../eval/runner');
+    const result = await runEval(args[1]);
+    console.log(
+      `Permiscope eval v${result.version}: ${result.passed}/${result.total} passed (${result.passRate.toFixed(1)}%)`,
+    );
+    for (const failure of result.failures) {
+      console.error(`  ✗ ${failure.id}: expected ${failure.expected}, got ${failure.actual}`);
+    }
+    process.exit(result.failed === 0 ? 0 : 1);
+  }
+
   if (args[0] === 'verify') {
     const logPath = path.resolve(args[1] || './logs/audit.log');
     const logger = new AuditLogger(path.dirname(logPath), false, { logPath });
@@ -81,6 +93,7 @@ async function main() {
     console.log('Usage: permiscope <command> [args...]');
     console.log('Example: permiscope run_command "echo hello"');
     console.log('         permiscope read_file "C:/Safe/data.txt"');
+    console.log('         permiscope eval [cases.json]');
     console.log('         permiscope verify [audit.log]');
     console.log('         permiscope serve  (needs PERMISCOPE_SIDECAR_TOKEN)');
     console.log('         permiscope --demo');

@@ -13,6 +13,8 @@
     "demo": "node dist/cli/index.js --demo",
     "dev:dashboard": "ts-node src/dashboard/server.ts",
     "serve": "ts-node src/cli/index.ts serve",
+    "eval": "ts-node src/cli/index.ts eval",
+    "eval:fixture": "ts-node src/scenarios/rogue_agent.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\""

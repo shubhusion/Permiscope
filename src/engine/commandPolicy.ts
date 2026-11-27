@@ -22,6 +22,11 @@ export function parseCommand(command: string): CommandParseResult {
   if (typeof command !== 'string' || command.trim() === '') {
     return { ok: false, reason: 'empty command' };
   }
+  // shell-quote expands unknown $VAR to an empty token; reject substitution
+  // syntax in the raw string instead of silently changing the command.
+  if (command.includes('$') || command.includes('`')) {
+    return { ok: false, reason: 'shell substitution is not allowed' };
+  }
 
   let tokens: unknown[];
   try {
