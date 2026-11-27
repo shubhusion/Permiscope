@@ -297,9 +297,12 @@ See the [`/docs`](./docs) folder for detailed guides:
 
 We welcome community contributions! Permiscope uses structured templates for **Bug Reports**, **Feature Requests**, and **Pull Requests**.
 
-1. Fork the repository.
-2. Follow the [Contributing Guidelines](CONTRIBUTING.md).
-3. Open a PR with our standardized template.
+1. Open or claim an issue before starting work.
+2. Fork the repository and create a branch for that issue.
+3. Follow the [Contributing Guidelines](CONTRIBUTING.md) and [Maintainer Rules](MAINTAINING.md).
+4. Open a PR with our standardized template and link the issue with `Closes #N`.
+
+Everyone participating is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 📄 License
 
