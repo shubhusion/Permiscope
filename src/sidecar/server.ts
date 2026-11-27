@@ -1,11 +1,12 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { Server } from 'http';
-import { timingSafeEqual } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { ExecutionGateway, GatewayOptions, ActionExecutor } from '../gateway/ExecutionGateway';
 import { Action, Policy } from '../core/types';
 import { withRequestContext } from '../core/requestContext';
+import { IdempotencyCache } from '../gateway/IdempotencyCache';
 
 const ActionInputSchema = z.object({
   actionName: z.string().min(1),
@@ -25,6 +26,10 @@ export interface SidecarOptions {
   customExecutors?: Record<string, ActionExecutor>;
   gatewayOptions?: Partial<GatewayOptions>;
   allowRemote?: boolean;
+  /** Optional shared replay cache; defaults to a bounded in-process cache. */
+  idempotencyCache?: IdempotencyCache;
+  maxIdempotencyEntries?: number;
+  idempotencyTtlMs?: number;
 }
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -102,15 +107,28 @@ export function createSidecar(options: SidecarOptions): {
     res.json({ decision });
   });
 
+  const idempotencyCache =
+    options.idempotencyCache ??
+    new IdempotencyCache(options.maxIdempotencyEntries, options.idempotencyTtlMs);
+
   app.post('/v1/execute', async (req, res) => {
     const parsed = ActionInputSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     }
     const token = bearerToken(req.headers.authorization);
-    const result = await withRequestContext({ token }, () =>
-      gateway.run(toAction(parsed.data, gatewayIdentity(options))),
-    );
+    const execute = () =>
+      withRequestContext({ token }, () =>
+        gateway.run(toAction(parsed.data, gatewayIdentity(options))),
+      );
+    const key = req.header('Idempotency-Key');
+    const result = key
+      ? await idempotencyCache.getOrCompute(
+          token ? createHash('sha256').update(token).digest('hex') : gatewayIdentity(options),
+          key,
+          execute,
+        )
+      : await execute();
     res.json(result);
   });
 

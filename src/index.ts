@@ -26,6 +26,7 @@ export type { AdapterConfig } from './adapters/PermiscopeAdapter';
 // ============================================
 export { ExecutionGateway } from './gateway/ExecutionGateway';
 export { BudgetTracker } from './gateway/BudgetTracker';
+export { IdempotencyCache } from './gateway/IdempotencyCache';
 export type {
   Budget,
   BudgetRemaining,

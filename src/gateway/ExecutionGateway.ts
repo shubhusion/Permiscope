@@ -40,6 +40,8 @@ export interface GatewayResult {
   budgetRemaining?: BudgetRemaining;
   /** True when an optional postcondition compensation hook succeeded. */
   compensated?: boolean;
+  /** True when this result came from an idempotency replay, not a fresh execution. */
+  replayed?: boolean;
 }
 
 export interface GatewayOptions {
