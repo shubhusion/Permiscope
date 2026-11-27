@@ -116,6 +116,20 @@ Permiscope is designed for high-trust environments. Use these environment variab
 | `PERMISCOPE_SIDECAR_TOKEN` | **High** | Bearer token required by the language-agnostic HTTP sidecar. |
 | `PERMISCOPE_STRICT_LOGGING` | Medium | Set to `true` to block actions if the audit log cannot be written. |
 
+### 🧪 Security evaluation
+
+A versioned corpus of adversarial actions (shell injection, path escape, approval
+identity, default deny) is run on every CI job. Current result: **36/36 passed
+(100%)** for corpus v1.0.0. Reproduce it locally with:
+
+```bash
+npm run eval
+```
+
+See [`eval/cases.json`](./eval/cases.json) for the cases and
+[`eval/fixtures/rogue-agent.json`](./eval/fixtures/rogue-agent.json) for a recorded
+end-to-end scenario.
+
 ---
 
 ### 🛠️ Execution & CLI

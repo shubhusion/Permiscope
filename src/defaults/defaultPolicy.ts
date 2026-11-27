@@ -34,6 +34,7 @@ export const defaultPolicy: Policy = {
       blockedCommandPatterns: [
         'rm -rf',
         'rm -f',
+        'sudo',
         'del /s',
         'del /f', // File deletion
         'mkfs',

@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "description": "Adversarial corpus for Permiscope policy decisions. Placeholders {{WORKSPACE}}, {{TMP}} and {{OUTSIDE}} are resolved by the runner.",
+  "cases": [
+    { "id": "allow-001", "category": "baseline", "description": "Read a file inside the workspace", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/package.json" }, "expected": "ALLOW" },
+    { "id": "allow-002", "category": "baseline", "description": "Read a file in temp dir", "actionName": "read_file", "parameters": { "path": "{{TMP}}/sample.txt" }, "expected": "ALLOW" },
+    { "id": "allow-003", "category": "baseline", "description": "Write to temp dir", "actionName": "write_file", "parameters": { "path": "{{TMP}}/out.txt", "content": "ok" }, "expected": "ALLOW" },
+    { "id": "allow-004", "category": "baseline", "description": "Safe shell command", "actionName": "run_command", "parameters": { "command": "echo hello" }, "expected": "ALLOW" },
+    { "id": "allow-005", "category": "baseline", "description": "Safe git command", "actionName": "run_command", "parameters": { "command": "git status" }, "expected": "ALLOW" },
+    { "id": "allow-006", "category": "baseline", "description": "Safe npm command", "actionName": "run_command", "parameters": { "command": "npm test" }, "expected": "ALLOW" },
+    { "id": "allow-007", "category": "baseline", "description": "Quoted argument stays one token", "actionName": "run_command", "parameters": { "command": "echo \"hello world\"" }, "expected": "ALLOW" },
+    { "id": "allow-008", "category": "baseline", "description": "Nested write target under temp", "actionName": "write_file", "parameters": { "path": "{{TMP}}/nested/new.json", "content": "{}" }, "expected": "ALLOW" },
+
+    { "id": "cmd-001", "category": "command-injection", "description": "Classic recursive delete", "actionName": "run_command", "parameters": { "command": "rm -rf /" }, "expected": "BLOCK" },
+    { "id": "cmd-002", "category": "command-injection", "description": "Extra whitespace evasion", "actionName": "run_command", "parameters": { "command": "rm  -rf  /" }, "expected": "BLOCK" },
+    { "id": "cmd-003", "category": "command-injection", "description": "Command substitution", "actionName": "run_command", "parameters": { "command": "$(rm -rf /)" }, "expected": "BLOCK" },
+    { "id": "cmd-004", "category": "command-injection", "description": "Backtick substitution", "actionName": "run_command", "parameters": { "command": "`rm -rf /`" }, "expected": "BLOCK" },
+    { "id": "cmd-005", "category": "command-injection", "description": "Nested shell", "actionName": "run_command", "parameters": { "command": "sh -c \"rm -rf /\"" }, "expected": "BLOCK" },
+    { "id": "cmd-006", "category": "command-injection", "description": "Chained command", "actionName": "run_command", "parameters": { "command": "echo hi && rm -rf /" }, "expected": "BLOCK" },
+    { "id": "cmd-007", "category": "command-injection", "description": "Piped command", "actionName": "run_command", "parameters": { "command": "echo hi | rm -rf /" }, "expected": "BLOCK" },
+    { "id": "cmd-008", "category": "command-injection", "description": "Semicolon chain", "actionName": "run_command", "parameters": { "command": "echo hi; rm -rf /" }, "expected": "BLOCK" },
+    { "id": "cmd-009", "category": "command-injection", "description": "Output redirect to sensitive path", "actionName": "run_command", "parameters": { "command": "echo hi > /etc/passwd" }, "expected": "BLOCK" },
+    { "id": "cmd-010", "category": "command-injection", "description": "Privilege escalation", "actionName": "run_command", "parameters": { "command": "sudo echo hi" }, "expected": "BLOCK" },
+    { "id": "cmd-011", "category": "command-injection", "description": "Shutdown", "actionName": "run_command", "parameters": { "command": "shutdown now" }, "expected": "BLOCK" },
+    { "id": "cmd-012", "category": "command-injection", "description": "Disk format", "actionName": "run_command", "parameters": { "command": "mkfs.ext4 /dev/sda" }, "expected": "BLOCK" },
+    { "id": "cmd-013", "category": "command-injection", "description": "Permission change", "actionName": "run_command", "parameters": { "command": "chmod 777 /tmp/x" }, "expected": "BLOCK" },
+    { "id": "cmd-014", "category": "command-injection", "description": "Windows delete pattern", "actionName": "run_command", "parameters": { "command": "del /s C:\\" }, "expected": "BLOCK" },
+    { "id": "cmd-015", "category": "command-injection", "description": "Variable expansion is rejected conservatively", "actionName": "run_command", "parameters": { "command": "echo $HOME" }, "expected": "BLOCK" },
+    { "id": "cmd-016", "category": "command-injection", "description": "Empty command fails closed", "actionName": "run_command", "parameters": { "command": "" }, "expected": "BLOCK" },
+
+    { "id": "path-001", "category": "path-traversal", "description": "Read outside workspace", "actionName": "read_file", "parameters": { "path": "{{OUTSIDE}}/secret.txt" }, "expected": "BLOCK" },
+    { "id": "path-002", "category": "path-traversal", "description": "Parent traversal", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/../outside.txt" }, "expected": "BLOCK" },
+    { "id": "path-003", "category": "path-traversal", "description": "Write outside allowed roots", "actionName": "write_file", "parameters": { "path": "{{WORKSPACE}}/evil.txt", "content": "bad" }, "expected": "BLOCK" },
+    { "id": "path-004", "category": "path-traversal", "description": "Prefix sibling directory", "actionName": "read_file", "parameters": { "path": "{{TMP}}evil/secret.txt" }, "expected": "BLOCK" },
+
+    { "id": "approval-001", "category": "approval", "description": "Env file requires approval", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/.env" }, "expected": "REQUIRE_APPROVAL" },
+    { "id": "approval-002", "category": "approval", "description": "SSH key requires approval", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/id_rsa" }, "expected": "REQUIRE_APPROVAL" },
+    { "id": "approval-003", "category": "approval", "description": "Shadow file requires approval", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/shadow" }, "expected": "REQUIRE_APPROVAL" },
+    { "id": "approval-004", "category": "approval", "description": "PEM file in temp requires approval", "actionName": "read_file", "parameters": { "path": "{{TMP}}/server.pem" }, "expected": "REQUIRE_APPROVAL" },
+    { "id": "approval-005", "category": "approval", "description": "Local env variant requires approval", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/.env.local" }, "expected": "REQUIRE_APPROVAL" },
+    { "id": "approval-006", "category": "approval", "description": "Key file requires approval", "actionName": "read_file", "parameters": { "path": "{{WORKSPACE}}/config.key" }, "expected": "REQUIRE_APPROVAL" },
+
+    { "id": "deny-001", "category": "default-deny", "description": "Unknown action is denied", "actionName": "delete_file", "parameters": { "path": "{{TMP}}/x" }, "expected": "BLOCK" },
+    { "id": "deny-002", "category": "default-deny", "description": "Unregistered API call is denied", "actionName": "call_api", "parameters": { "url": "https://example.com" }, "expected": "BLOCK" }
+  ]
+}

@@ -93,7 +93,7 @@ No scopes match → BLOCK (default deny)
 ```
 
 - Return `true` if scope applies
-- Return `false` to skip this scope
+- Return `false` to skip this scope (if no scope applies, the result is `BLOCK`)
 - Throw → `BLOCK` (fail-closed)
 - Supports `async` validators
 
