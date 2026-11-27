@@ -36,3 +36,6 @@ jobs:
     - name: Python SDK tests
       if: runner.os == 'Linux'
       run: python -m unittest discover -s python -p 'test_*.py'
+    - name: End-to-end process checks
+      if: runner.os == 'Linux' && matrix.node-version == '24.x'
+      run: npm run e2e
