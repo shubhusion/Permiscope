@@ -54,6 +54,7 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
 - Budgets separate attempts from executions, reserve atomically before side effects and accept an optional shared store (#71).
 - `Idempotency-Key` support on `/v1/execute` with a bounded, TTL'd replay cache and concurrent deduplication (#72).
 - Audit output and errors are redacted by default; raw dashboard views still scrub credential-shaped fields (#73).
+- Dashboard CORS follows `PERMISCOPE_DASHBOARD_PORT`; the ignored `_agentId` adapter parameter is removed (#74).
 - Audit head record is HMAC-signed and verified with the key ring (#27).
 - GitHub Pages demo blank page caused by a case-mismatched asset base path (#24).
 - High-severity dependency advisories patched (#29).

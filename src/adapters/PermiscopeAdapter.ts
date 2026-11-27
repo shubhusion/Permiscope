@@ -58,10 +58,12 @@ export class PermiscopeAdapter {
    * Execute an action through the trust layer.
    * @param actionName The type of action (e.g., 'run_command', 'write_file')
    * @param params Dictionary of parameters
-   * @param agentId Optional identifier for the calling system
    * @returns Promise resolving to the output or throwing an error if blocked/failed.
+   *
+   * Identity is configured on the adapter via `defaultAgentId` or a
+   * `principalProvider`; callers cannot supply it per action.
    */
-  async act(actionName: string, params: Record<string, any>, _agentId?: string): Promise<any> {
+  async act(actionName: string, params: Record<string, any>): Promise<any> {
     const action: Action = {
       actionName: actionName as any,
       parameters: params,
@@ -99,8 +101,8 @@ export class PermiscopeAdapter {
   wrap<T>(
     actionName: string,
     executor: (params: Record<string, any>) => Promise<T>,
-  ): (params: Record<string, any>, _agentId?: string) => Promise<T> {
-    return async (params: Record<string, any>, _agentId?: string): Promise<T> => {
+  ): (params: Record<string, any>) => Promise<T> {
+    return async (params: Record<string, any>): Promise<T> => {
       const action: Action = {
         actionName: actionName as any,
         parameters: params,
@@ -157,7 +159,7 @@ export function withPermiscope<T>(
   actionName: string,
   executor: (params: Record<string, any>) => Promise<T>,
   config?: AdapterConfig,
-): (params: Record<string, any>, _agentId?: string) => Promise<T> {
+): (params: Record<string, any>) => Promise<T> {
   const adapter = new PermiscopeAdapter(config);
   return adapter.wrap(actionName, executor);
 }

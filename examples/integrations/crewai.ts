@@ -44,9 +44,9 @@ async function runCrew() {
         console.log(`\n[Agent: ${task.agent.role}] Performing: ${task.description}`);
 
         try {
-            // Route the task's action through Permiscope
-            // We pass the agent role as the agentId for the audit log
-            const result = await permiscope.act(task.action, task.params, task.agent.role);
+            // Route the task's action through Permiscope. Identity comes from
+            // the adapter's principal configuration, never from the task itself.
+            const result = await permiscope.act(task.action, task.params);
             console.log('✅ Success:', result);
         } catch (error: any) {
             console.error('❌ Blocked:', error.message);
