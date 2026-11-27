@@ -1,4 +1,8 @@
+import * as os from 'os';
+import * as path from 'path';
 import { PolicyEngine } from '../../engine/PolicyEngine';
+
+const TEMP_DIR = os.tmpdir();
 
 describe('PolicyEngine & Guardrails', () => {
   const policy = {
@@ -9,7 +13,7 @@ describe('PolicyEngine & Guardrails', () => {
       {
         actionName: 'write_file',
         decision: 'ALLOW' as const,
-        allowedPaths: ['/tmp/', 'C:\\Safe'],
+        allowedPaths: [TEMP_DIR],
       },
       {
         actionName: 'run_command',
@@ -69,10 +73,10 @@ describe('PolicyEngine & Guardrails', () => {
     expect(decision).toBe('BLOCK');
   });
 
-  test('Path in /tmp allowed', async () => {
+  test('Path in the temp dir allowed', async () => {
     const decision = await engine.evaluate({
       actionName: 'write_file',
-      parameters: { path: '/tmp/test.txt' },
+      parameters: { path: path.join(TEMP_DIR, 'test.txt') },
       agentId,
       timestamp,
     });

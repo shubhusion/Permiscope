@@ -43,9 +43,18 @@ No scopes match → BLOCK (default deny)
 }
 ```
 
-- Paths are **normalized** using `path.resolve` and `path.normalize`
-- Comparison is **case-insensitive** (Windows compatible)
-- Prevents traversal attacks (`../` is resolved)
+- Roots are mandatory: an `ALLOW` or `REQUIRE_APPROVAL` scope with no `allowedPaths`
+  fails closed. The default policy grants reads only under the workspace and temp dir.
+- Both the target and each root are resolved with `fs.realpathSync`; for a write to a
+  new file, the nearest existing parent is resolved. Symlink escapes are therefore
+  rejected.
+- Traversal (`../`) and prefix-sibling directories (`/tmp` vs `/tmp-evil`) are rejected
+  via `path.relative` containment, not string prefixes.
+- Comparison is case-insensitive **only on Windows**; lowercasing on POSIX would widen
+  access on a case-sensitive filesystem.
+- Residual risk: resolving and writing are separate operations, so an attacker who can
+  replace a path between the check and the write (TOCTOU) can still escape. Use
+  OS-level isolation for adversarial environments.
 
 ### Command Patterns
 
