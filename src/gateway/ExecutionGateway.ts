@@ -14,6 +14,7 @@ export type Approver = (request: ApprovalRequest) => Promise<boolean>;
 
 export interface Principal {
   id: string;
+  roles?: string[];
 }
 
 export interface ApprovalRequest {
@@ -97,7 +98,11 @@ export class ExecutionGateway {
     const principal = this.principalProvider
       ? await this.principalProvider(action)
       : { id: this.defaultPrincipalId };
-    const governedAction: Action = { ...action, agentId: principal?.id || this.defaultPrincipalId };
+    const governedAction: Action = {
+      ...action,
+      agentId: principal?.id || this.defaultPrincipalId,
+      roles: principal?.roles ?? action.roles,
+    };
 
     const identity = governedAction.agentId;
     let budgetRemaining: BudgetRemaining | undefined;

@@ -80,8 +80,10 @@ export class PolicyEngine {
     // Exact matches plus suffix wildcards such as 'mcp:*'.
     return this.policy.scopes.filter(
       (s) =>
-        s.actionName === action.actionName ||
-        (s.actionName.endsWith('*') && action.actionName.startsWith(s.actionName.slice(0, -1))),
+        (s.actionName === action.actionName ||
+          (s.actionName.endsWith('*') &&
+            action.actionName.startsWith(s.actionName.slice(0, -1)))) &&
+        (!s.roles || (action.roles ?? []).some((role) => s.roles!.includes(role))),
     );
   }
 

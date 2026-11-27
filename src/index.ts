@@ -31,6 +31,8 @@ export { PolicyEngine } from './engine/PolicyEngine';
 export { isPathWithin } from './engine/pathGuard';
 export { defaultPolicy } from './defaults/defaultPolicy';
 export { createSidecar, startSidecar } from './sidecar/server';
+export { verifiedPrincipalProvider, signHs256Token } from './auth/verifiedPrincipal';
+export type { JwtVerifierOptions } from './auth/verifiedPrincipal';
 export type { SidecarOptions } from './sidecar/server';
 export * from './core/types';
 

@@ -7,6 +7,8 @@ export interface Action {
   agentId: string;
   reason?: string;
   timestamp: Date;
+  roles?: string[];
+  token?: string;
 }
 
 export type PermissionDecision = 'ALLOW' | 'BLOCK' | 'REQUIRE_APPROVAL' | 'SHADOW_BLOCK';
@@ -24,6 +26,7 @@ export interface PermissionScope {
   blockedCommandPatterns?: string[]; // regex strings
   // Dynamic Policy-as-Code
   validator?: (action: Action) => boolean | Promise<boolean>;
+  roles?: string[];
   // Checked after the executor runs
   postconditions?: Postcondition[];
 }

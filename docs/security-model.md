@@ -6,6 +6,26 @@ This document describes Permiscope's security guarantees, threat model, and limi
 
 Permiscope is a **mediation layer**, not a sandbox. It intercepts and controls actions at the API level but does not provide process isolation.
 
+## Principal verification
+
+By default identity comes from a host-supplied `principalProvider`. For callers that
+carry a JWT, use `verifiedPrincipalProvider` to verify the signature, expiry, issuer
+and audience locally (HS256 or RS256), and to extract roles from claims:
+
+```typescript
+import { verifiedPrincipalProvider } from 'permiscope';
+
+const principalProvider = verifiedPrincipalProvider({
+  secret: process.env.AGENT_JWT_SECRET,
+  issuer: 'https://issuer.example',
+  audience: 'permiscope',
+  roleClaim: 'roles',
+});
+```
+
+Policy scopes can then require roles with `roles: ['admin']`. The sidecar forwards its
+bearer token into the verified provider, so the token is checked on every governed call.
+
 ## What is Protected
 
 | Threat | Mitigation |

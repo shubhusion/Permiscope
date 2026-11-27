@@ -35,13 +35,18 @@ function authorized(provided: string | undefined, token: string): boolean {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-function toAction(input: ActionInput, principalId: string): Action {
+function bearerToken(header: string | undefined): string | undefined {
+  return header?.startsWith('Bearer ') ? header.slice(7) : undefined;
+}
+
+function toAction(input: ActionInput, principalId: string, token?: string): Action {
   return {
     actionName: input.actionName,
     parameters: input.parameters as Record<string, any>,
     agentId: principalId,
     reason: input.reason,
     timestamp: new Date(),
+    token,
   };
 }
 
@@ -87,7 +92,9 @@ export function createSidecar(options: SidecarOptions): {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     }
-    const decision = await engine.evaluate(toAction(parsed.data, gatewayIdentity(options)));
+    const decision = await engine.evaluate(
+      toAction(parsed.data, gatewayIdentity(options), bearerToken(req.headers.authorization)),
+    );
     res.json({ decision });
   });
 
@@ -96,7 +103,9 @@ export function createSidecar(options: SidecarOptions): {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     }
-    const result = await gateway.run(toAction(parsed.data, gatewayIdentity(options)));
+    const result = await gateway.run(
+      toAction(parsed.data, gatewayIdentity(options), bearerToken(req.headers.authorization)),
+    );
     res.json(result);
   });
 
