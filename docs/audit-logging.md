@@ -54,9 +54,11 @@ Entry 1: sequence=1, previousHash=0...0, hash(entry1) = H1
 Entry 2: sequence=2, previousHash=H1,    hash(entry2) = H2
 ```
 
-A companion `audit.log.head` file records the last sequence and hash. It is written
-under the same lock as the append, so deleting the tail of the log is detected.
-Modifying any entry breaks the chain.
+A companion `audit.log.head` file records the last sequence and hash, signed with
+HMAC when a secret is configured. It is written under the same lock as the append, so
+deleting the tail of the log is detected. Modifying any entry or the head record
+without the signing key breaks verification. Signing keys can rotate because the
+head carries a `keyId` and verification resolves it from the key ring.
 
 ## HMAC Signing
 
@@ -90,7 +92,7 @@ const result = logger.verifyChain();
 
 1. **Sequence continuity** — each entry's `sequence` is the expected number
 2. **Chain integrity** — each `previousHash` matches the computed hash
-3. **Head agreement** — the last sequence and hash match `audit.log.head` (detects tail truncation)
+3. **Head agreement and signature** — the last sequence and hash match the signed `audit.log.head` (detects tail truncation and head tampering)
 4. **Signature validity** — HMAC matches using the key named by `keyId`
 5. **Parse validity** — all entries are valid JSON
 

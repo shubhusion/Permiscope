@@ -110,4 +110,29 @@ describe('audit chain', () => {
 
     await expect(gateway.run(action())).rejects.toThrow('disk full');
   });
+
+  test('the head record is signed and tampering with it breaks verification', async () => {
+    const logger = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1' });
+    await logger.log(entry());
+
+    const headPath = path.join(dir, 'audit.log.head');
+    const head = JSON.parse(fs.readFileSync(headPath, 'utf-8'));
+    expect(head.signature).toBeDefined();
+    expect(head.keyId).toBe('v1');
+
+    head.hash = '0'.repeat(64);
+    fs.writeFileSync(headPath, JSON.stringify(head));
+    const result = logger.verifyChain();
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((error) => error.includes('Head'))).toBe(true);
+  });
+
+  test('a rotated key still verifies the old head signature', async () => {
+    const keyRing = { v1: 'k1', v2: 'k2' };
+    const first = new AuditLogger(dir, false, { secret: 'k1', keyId: 'v1', keyRing });
+    await first.log(entry());
+
+    const rotated = new AuditLogger(dir, false, { secret: 'k2', keyId: 'v2', keyRing });
+    expect(rotated.verifyChain().valid).toBe(true);
+  });
 });

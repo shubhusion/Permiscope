@@ -79,6 +79,11 @@ export class AuditLogger {
     return createHmac('sha256', secret).update(JSON.stringify(unsigned)).digest('hex');
   }
 
+  private signHead(sequence: number, hash: string): string | undefined {
+    if (!this.secret) return undefined;
+    return createHmac('sha256', this.secret).update(`${sequence}:${hash}`).digest('hex');
+  }
+
   private readLines(): string[] {
     try {
       return fs
@@ -136,7 +141,15 @@ export class AuditLogger {
       this.lastHash = this.computeHash(line);
       fs.appendFileSync(this.logPath, line + '\n');
       // Written under the same lock as the append: the head detects tail truncation.
-      fs.writeFileSync(this.headPath, JSON.stringify({ sequence, hash: this.lastHash }));
+      fs.writeFileSync(
+        this.headPath,
+        JSON.stringify({
+          sequence,
+          hash: this.lastHash,
+          keyId: this.secret ? this.keyId : undefined,
+          signature: this.signHead(sequence, this.lastHash),
+        }),
+      );
     } catch (error) {
       console.error('Failed to write audit log:', error);
       if (this.strictMode) {
@@ -200,13 +213,32 @@ export class AuditLogger {
       try {
         const head: unknown = JSON.parse(fs.readFileSync(this.headPath, 'utf-8'));
         if (!head || typeof head !== 'object') throw new Error('malformed head record');
-        const record = head as { sequence?: unknown; hash?: unknown };
+        const record = head as {
+          sequence?: unknown;
+          hash?: unknown;
+          keyId?: unknown;
+          signature?: unknown;
+        };
         if (record.sequence !== lines.length) {
           errors.push(
             `Tail truncated: head says ${String(record.sequence)} entries, log has ${lines.length}`,
           );
         }
         if (record.hash !== expectedHash) errors.push('Head hash does not match the log');
+
+        if (typeof record.signature === 'string') {
+          const key = this.secretFor(typeof record.keyId === 'string' ? record.keyId : undefined);
+          if (!key) {
+            errors.push('Head signature cannot be verified: unknown keyId');
+          } else {
+            const expected = createHmac('sha256', key)
+              .update(`${String(record.sequence)}:${String(record.hash)}`)
+              .digest('hex');
+            if (record.signature !== expected) errors.push('Head signature is invalid');
+          }
+        } else if (this.secret) {
+          errors.push('Head record is unsigned');
+        }
       } catch (error) {
         errors.push(`Head record unreadable: ${error}`);
       }
