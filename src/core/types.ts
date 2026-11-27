@@ -11,6 +11,11 @@ export interface Action {
 
 export type PermissionDecision = 'ALLOW' | 'BLOCK' | 'REQUIRE_APPROVAL' | 'SHADOW_BLOCK';
 
+export interface Postcondition {
+  description?: string;
+  check: (action: Action, output: any) => boolean | Promise<boolean>;
+}
+
 export interface PermissionScope {
   actionName: ActionType;
   decision: PermissionDecision;
@@ -19,6 +24,8 @@ export interface PermissionScope {
   blockedCommandPatterns?: string[]; // regex strings
   // Dynamic Policy-as-Code
   validator?: (action: Action) => boolean | Promise<boolean>;
+  // Checked after the executor runs
+  postconditions?: Postcondition[];
 }
 
 export interface Policy {

@@ -28,6 +28,7 @@ export { ExecutionGateway } from './gateway/ExecutionGateway';
 export { BudgetTracker } from './gateway/BudgetTracker';
 export type { Budget, BudgetRemaining, BudgetCheck } from './gateway/BudgetTracker';
 export { PolicyEngine } from './engine/PolicyEngine';
+export { isPathWithin } from './engine/pathGuard';
 export { defaultPolicy } from './defaults/defaultPolicy';
 export { createSidecar, startSidecar } from './sidecar/server';
 export type { SidecarOptions } from './sidecar/server';
