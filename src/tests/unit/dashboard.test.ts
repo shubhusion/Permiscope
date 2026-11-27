@@ -22,6 +22,7 @@ describe('dashboard API authentication', () => {
         timestamp: new Date(),
       },
       decision: 'ALLOW',
+      result: { success: true, output: 'API_KEY=hunter2\n' },
     });
     server = app.listen(0);
     await new Promise<void>((resolve) => server.once('listening', resolve));
@@ -53,5 +54,15 @@ describe('dashboard API authentication', () => {
     const logs = await response.json();
     const entry = logs.find((item: any) => item.agentId === 'dashboard-test');
     expect(entry.action.parameters.path).toBe('/tmp/secret.txt');
+  });
+
+  test('redacts execution output in both default and raw views', async () => {
+    for (const path of ['/api/logs', '/api/logs?raw=1']) {
+      const response = await fetch(`${baseUrl}${path}`, { headers });
+      const logs = await response.json();
+      const entry = logs.find((item: any) => item.agentId === 'dashboard-test');
+      expect(entry.result.output).toBe('[redacted]');
+      expect(JSON.stringify(logs)).not.toContain('hunter2');
+    }
   });
 });

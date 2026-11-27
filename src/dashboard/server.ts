@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { ApprovalCache } from '../gateway/ApprovalCache';
-import { AuditLogger } from '../logging/AuditLogger';
+import { AuditLogger, redactSensitive } from '../logging/AuditLogger';
 
 export const app = express();
 const port = Number(process.env.PERMISCOPE_DASHBOARD_PORT ?? 3000);
@@ -109,10 +109,23 @@ app.get('/api/logs', (req, res) => {
       .filter((l) => l.phase !== 'INTENT')
       .reverse(); // Newest first
 
-    if (req.query.raw !== '1') {
-      for (const entry of logs) {
+    for (const entry of logs) {
+      if (req.query.raw === '1') {
+        // Raw mode reveals parameter values but never credential-shaped data.
+        if (entry?.action?.parameters) {
+          entry.action.parameters = redactSensitive(entry.action.parameters);
+        }
+        if (entry?.result) entry.result = redactSensitive(entry.result);
+      } else {
         if (entry?.action?.parameters) {
           entry.action.parameters = redact(entry.action.parameters);
+        }
+        if (entry?.result && typeof entry.result === 'object') {
+          entry.result = {
+            ...entry.result,
+            output: '[redacted]',
+            ...(entry.result.error ? { error: '[redacted]' } : {}),
+          };
         }
       }
     }

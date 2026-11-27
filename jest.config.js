@@ -5,6 +5,9 @@ module.exports = {
   verbose: true,
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts'],
+  // Keep workers bounded: several suites share temp directories and lockfiles,
+  // and unconstrained workers make CI flaky on small runners.
+  maxWorkers: 2,
   collectCoverage: true,
   collectCoverageFrom: [
     'src/**/*.ts',
