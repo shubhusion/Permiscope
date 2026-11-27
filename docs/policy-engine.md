@@ -79,23 +79,26 @@ No scopes match → BLOCK (default deny)
   gateway uses argv directly and emulates the `echo` builtin.
 - **ReDoS protection**: unsafe regex patterns are skipped with a warning.
 
-### Dynamic Validators
+### Dynamic predicates: `when` and `guard`
 
 ```typescript
 {
   actionName: 'read_file',
   decision: 'REQUIRE_APPROVAL',
-  validator: (action) => {
-    const path = action.parameters.path || '';
-    return path.includes('.env');
-  }
+  when: (action) => String(action.parameters.path || '').includes('.env'),
+  guard: (action) => !String(action.parameters.path || '').includes('secrets'),
 }
 ```
 
-- Return `true` if scope applies
-- Return `false` to skip this scope (if no scope applies, the result is `BLOCK`)
-- Throw → `BLOCK` (fail-closed)
-- Supports `async` validators
+- `when` determines **applicability**: `false` skips the scope so later scopes can match.
+- `guard` is a **hard deny**: `false` blocks the action even if another scope allows it.
+- A throw in either predicate blocks (fail-closed, reason `WHEN_ERROR`/`GUARD_ERROR`).
+- Both support `async` functions.
+
+`validator` is the legacy applicability predicate. It keeps its historical "false skips
+this scope" behavior for compatibility, but it is easy to misuse as a deny check. New
+policies should use `when` for applicability and `guard` for denial — see
+[migration.md](./migration.md).
 
 ## Example: Multi-Scope Policy
 

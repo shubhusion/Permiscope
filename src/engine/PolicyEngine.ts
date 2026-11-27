@@ -37,6 +37,20 @@ export class PolicyEngine {
     let applied = false;
 
     for (const scope of matchingScopes) {
+      if (scope.when) {
+        try {
+          if (!(await scope.when(action))) continue;
+        } catch (e) {
+          console.error('Policy predicate error:', e);
+          return {
+            decision: 'BLOCK',
+            reasonCode: 'WHEN_ERROR',
+            matchedScope: scope.actionName,
+            remediation: 'The scope predicate failed; fix the policy before retrying.',
+          };
+        }
+      }
+
       let scopeDecision = scope.decision;
       let reasonCode: string | undefined;
 
@@ -108,6 +122,17 @@ export class PolicyEngine {
       }
     }
 
+    if (scope.guard) {
+      try {
+        if (!(await scope.guard(action))) return { outcome: 'block', reasonCode: 'GUARD_FAILED' };
+      } catch (e) {
+        console.error('Policy guard error:', e);
+        return { outcome: 'block', reasonCode: 'GUARD_ERROR' };
+      }
+    }
+
+    // Legacy validator keeps its original "false skips this scope" behavior.
+    // New policies should use `when` for applicability and `guard` for denial.
     if (scope.validator) {
       try {
         if (!(await scope.validator(action))) return { outcome: 'skip' };

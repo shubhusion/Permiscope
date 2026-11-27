@@ -40,6 +40,19 @@ export class ScopeBuilder {
     return this;
   }
 
+  /** Skip this scope when the predicate is false. */
+  when(predicate: PermissionScope['when']): this {
+    this.scope.when = predicate;
+    return this;
+  }
+
+  /** Deny the action when the predicate is false. */
+  guard(predicate: PermissionScope['guard']): this {
+    this.scope.guard = predicate;
+    return this;
+  }
+
+  /** Legacy applicability predicate; prefer `when` for new policies. */
   withValidator(validator: PermissionScope['validator']): this {
     this.scope.validator = validator;
     return this;

@@ -24,6 +24,11 @@ export interface PermissionScope {
   allowedPaths?: string[];
   blockedCommandPatterns?: string[]; // regex strings
   // Dynamic Policy-as-Code
+  /** Predicate for scope applicability: false skips this scope. */
+  when?: (action: Action) => boolean | Promise<boolean>;
+  /** Predicate that must hold: false denies, even if another scope allows. */
+  guard?: (action: Action) => boolean | Promise<boolean>;
+  /** Legacy applicability predicate (same skip semantics as `when`). */
   validator?: (action: Action) => boolean | Promise<boolean>;
   roles?: string[];
   // Checked after the executor runs
