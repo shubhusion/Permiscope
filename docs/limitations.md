@@ -26,9 +26,10 @@ Guardrails are deliberately conservative:
 - Command strings are tokenized with `shell-quote`; operators, nested shells and raw
   `$`/backtick substitution are rejected. POSIX grammar is modelled; Windows `cmd.exe`
   quoting is not, so unusual Windows commands may need a custom executor.
-- File paths are resolved with `realpathSync` and checked against allowed roots. A
-  symlink can still be swapped between the check and the write (TOCTOU); OS isolation
-  is the mitigation.
+- File paths are resolved with `realpathSync` at policy time and **again immediately
+  before I/O**, and the canonical path is what gets opened, so swapping a symlink in
+  between cannot redirect a write. A swap of the canonical path itself after resolution
+  is still outside the library's control; OS isolation is the remaining mitigation.
 - Case folding is applied only on Windows. POSIX paths are case-sensitive.
 
 ## Single Machine Only
