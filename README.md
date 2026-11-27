@@ -313,7 +313,11 @@ See the [`/docs`](./docs) folder for detailed guides:
 - [Policy Engine](./docs/policy-engine.md) — Rule evaluation and guardrails
 - [Approvals Workflow](./docs/approvals-workflow.md) — Human-in-the-loop
 - [Custom Executors](./docs/custom-executors.md) — Extending Permiscope
+- [Hosting the demo](./docs/hosting.md) — Local console and static deployment
+- [Architecture post](./docs/architecture-post.md) — Decisions, threat model and limits
 - [FAQ](./docs/faq.md) — Common questions
+- [Roadmap](./ROADMAP.md) — Shipped work and what comes next
+- [Security policy](./SECURITY.md) — Supported versions and private reporting
 
 ---
 

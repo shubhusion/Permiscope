@@ -28,9 +28,10 @@ should start with [CONTRIBUTING.md](./CONTRIBUTING.md).
 |---|---|
 | GitHub Issues | What needs doing and why. Templates live in `.github/ISSUE_TEMPLATE/`. |
 | Pull requests | The only way code lands on `main`: one issue → one branch → one PR. |
-| `ROADMAP.md` | Planned: a short summary linking issues, never a duplicate of them. |
-| `CHANGELOG.md` | Planned: what shipped, by version, in Keep a Changelog format. |
-| `docs/adr/` | Planned: architecture decision records capturing *why* choices were made. |
+| `ROADMAP.md` | Short summary linking issues, never a duplicate of them. |
+| `CHANGELOG.md` | What shipped, by version, in Keep a Changelog format. |
+| `docs/architecture-post.md` | Why the design looks like this, including rejected alternatives. |
+| `docs/adr/` | Planned: numbered architecture decision records for future choices. |
 | `docs/` | User-facing behavior. Docs change in the same PR as the behavior. |
 
 ## Branching and pull requests
@@ -45,18 +46,18 @@ should start with [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Required checks
 
-CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run build`, `npm test` and
-`npm run lint` on Ubuntu and Windows with Node 24 and 26. Development needs Node 24+ for
-the TypeScript toolchain; the published library supports Node 20 and newer. Node 18 and
-20 are not tested. The following are still being added in v1.1.0 and are **not** yet
-enforced by CI:
+CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 
-- `npm run audit:verify` (currently a broken script, repaired in issue #4)
-- `npm run eval` (adversarial corpus, added in issue #6)
-- Coverage thresholds
+- `npm ci`
+- `npm run build`
+- `npm test` (coverage thresholds enforced)
+- `npm run lint`
+- `npm run eval` (36-case adversarial corpus)
+- `npm run typecheck:web` and `npm run build:web`
 
-Do not claim a gate exists before CI enforces it. Until then, run the checks locally and
-report the results in the PR body.
+Development needs Node 24+ for the TypeScript toolchain; the published library supports
+Node 20 and newer. Node 18 and 20 are not tested. `npm run audit:verify` and
+`npm run fixture:web` are available locally; add them to CI before calling them gates.
 
 ### Review checklist
 
