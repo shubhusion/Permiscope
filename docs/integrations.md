@@ -100,6 +100,11 @@ Endpoints (all except `/health` require `Authorization: Bearer <token>`):
 | `POST /v1/execute` | `{ actionName, parameters?, reason? }` | `{ decision, success, output?, error? }` |
 | `GET /health` | — | `{ status: "ok" }` |
 
+Both endpoints share the same path: principal verification (when a provider is configured),
+role-gated scopes, approval cache and budget consumption. `/v1/decide` is a preview — it
+never executes or waits for approval, and a `REQUIRE_APPROVAL` decision is reported as-is.
+A decide call still consumes one budget attempt so policies cannot be probed for free.
+
 Python clients need no third-party packages — see [python/README.md](../python/README.md).
 Non-loopback binding is refused unless the sidecar is created programmatically with
 `allowRemote: true`, and should only be done behind TLS with a strong token.

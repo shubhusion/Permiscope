@@ -89,11 +89,27 @@ export class ExecutionGateway {
     this.cancelWaits.clear();
   }
 
-  async run(
+  /** Evaluates a governed action without executing or waiting for approval. */
+  async decide(action: Action): Promise<PermissionDecision> {
+    // A decide call still consumes a budget attempt: otherwise callers could
+    // probe policies for free. It never executes the action.
+    return (await this.decideInternal(action, true)).decision;
+  }
+
+  private async decideInternal(
     action: Action,
-    dryRun: boolean = false,
-    executor?: ActionExecutor,
-  ): Promise<GatewayResult> {
+    dryRun: boolean,
+  ): Promise<{
+    governedAction: Action;
+    identity: string;
+    decision: PermissionDecision;
+    reasonCode: string;
+    matchedScope?: string;
+    remediation?: string;
+    budgetRemaining?: BudgetRemaining;
+    budgetExceeded: boolean;
+    shadow: boolean;
+  }> {
     // Identity comes from the host-provided principal provider, never from the
     // caller-controlled agentId on the Action.
     const principal = this.principalProvider
@@ -111,10 +127,13 @@ export class ExecutionGateway {
       const budget = await this.budgetTracker.consume(identity);
       if (!budget.allowed) {
         return {
+          governedAction,
+          identity,
           decision: 'BLOCK',
-          success: false,
           reasonCode: 'BUDGET_EXCEEDED',
-          error: 'Principal budget exceeded',
+          budgetRemaining: budget.remaining,
+          budgetExceeded: true,
+          shadow: false,
         };
       }
       budgetRemaining = budget.remaining;
@@ -123,11 +142,6 @@ export class ExecutionGateway {
     const explanation = await this.policyEngine.evaluateDetailed(governedAction);
     let decision = explanation.decision;
     let reasonCode = explanation.reasonCode;
-    const matchedScope = explanation.matchedScope;
-    const remediation = explanation.remediation;
-    let success = false;
-    let output = null;
-    let error = undefined;
 
     if (decision === 'REQUIRE_APPROVAL') {
       if (
@@ -158,6 +172,54 @@ export class ExecutionGateway {
       }
     }
 
+    const shadow = decision === 'BLOCK' && !!(governedAction as any).shadowMode;
+    if (shadow) decision = 'SHADOW_BLOCK';
+
+    return {
+      governedAction,
+      identity,
+      decision,
+      reasonCode,
+      matchedScope: explanation.matchedScope,
+      remediation: explanation.remediation,
+      budgetRemaining,
+      budgetExceeded: false,
+      shadow,
+    };
+  }
+
+  async run(
+    action: Action,
+    dryRun: boolean = false,
+    executor?: ActionExecutor,
+  ): Promise<GatewayResult> {
+    const prepared = await this.decideInternal(action, dryRun);
+    const {
+      governedAction,
+      identity,
+      decision: preparedDecision,
+      budgetRemaining,
+      budgetExceeded,
+      shadow,
+    } = prepared;
+
+    if (budgetExceeded) {
+      return {
+        decision: 'BLOCK',
+        success: false,
+        reasonCode: 'BUDGET_EXCEEDED',
+        error: 'Principal budget exceeded',
+      };
+    }
+
+    let decision = preparedDecision;
+    let reasonCode = prepared.reasonCode;
+    const matchedScope = prepared.matchedScope;
+    const remediation = prepared.remediation;
+    let success = false;
+    let output = null;
+    let error = undefined;
+
     // Bind the eventual result to the decision made here. The INTENT record is
     // written before any side effect so strict logging can genuinely block it.
     const intentHash = createHash('sha256')
@@ -173,7 +235,10 @@ export class ExecutionGateway {
       result: { planned: true },
     });
 
-    if (decision === 'ALLOW') {
+    if (shadow) {
+      success = true;
+      output = '[SHADOW] Action appeared successful.';
+    } else if (decision === 'ALLOW') {
       if (dryRun) {
         success = true;
       } else {
@@ -203,10 +268,6 @@ export class ExecutionGateway {
           error = e.message;
         }
       }
-    } else if (decision === 'BLOCK' && (governedAction as any).shadowMode) {
-      decision = 'SHADOW_BLOCK';
-      success = true;
-      output = '[SHADOW] Action appeared successful.';
     } else {
       success = false;
     }
