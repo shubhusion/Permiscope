@@ -100,6 +100,12 @@ Endpoints (all except `/health` require `Authorization: Bearer <token>`):
 | `POST /v1/execute` | `{ actionName, parameters?, reason? }` | `{ decision, success, output?, error? }` |
 | `GET /health` | — | `{ status: "ok" }` |
 
+`POST /v1/execute` accepts an optional `Idempotency-Key` header. Keys are scoped to the
+authenticated principal; a retry with the same key replays the stored result with
+`replayed: true` instead of executing again. The cache is bounded (1000 entries) and
+expires after one hour by default; concurrent duplicates share a single execution.
+Configure it with `idempotencyCache`, `maxIdempotencyEntries` or `idempotencyTtlMs`.
+
 Both endpoints share the same path: principal verification (when a provider is configured),
 role-gated scopes, approval cache and budget consumption. `/v1/decide` is a preview — it
 never executes or waits for approval, and a `REQUIRE_APPROVAL` decision is reported as-is.
