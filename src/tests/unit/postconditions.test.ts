@@ -41,6 +41,7 @@ describe('post-conditions', () => {
 
     expect(result.success).toBe(true);
     expect(result.output).toBe('ok');
+    expect(result.sideEffects).toBe('committed');
   });
 
   test('failing post-condition marks the result unsuccessful with a reason', async () => {
@@ -53,6 +54,46 @@ describe('post-conditions', () => {
     expect(result.success).toBe(false);
     expect(result.reasonCode).toBe('POSTCONDITION_FAILED');
     expect(result.error).toContain('must fail');
+    // Detection only: the executor already ran and the side effect is committed.
+    expect(result.sideEffects).toBe('committed');
+  });
+
+  test('a blocked action reports no side effects', async () => {
+    const result = await gateway({ actionName: 'safe', decision: 'BLOCK' }).run(action());
+    expect(result.decision).toBe('BLOCK');
+    expect(result.sideEffects).toBe('none');
+  });
+
+  test('an optional compensation hook runs on failure and is reported', async () => {
+    const compensate = jest.fn().mockResolvedValue(undefined);
+    const result = await gateway({
+      actionName: 'safe',
+      decision: 'ALLOW',
+      postconditions: [{ check: () => false, compensate }],
+    }).run(action());
+
+    expect(result.success).toBe(false);
+    expect(result.compensated).toBe(true);
+    expect(compensate).toHaveBeenCalledTimes(1);
+  });
+
+  test('a failed compensation is reported without claiming success', async () => {
+    const result = await gateway({
+      actionName: 'safe',
+      decision: 'ALLOW',
+      postconditions: [
+        {
+          check: () => false,
+          compensate: () => {
+            throw new Error('rollback unavailable');
+          },
+        },
+      ],
+    }).run(action());
+
+    expect(result.success).toBe(false);
+    expect(result.compensated).toBeUndefined();
+    expect(result.error).toContain('compensation failed: rollback unavailable');
   });
 
   test('a throwing post-condition fails closed', async () => {

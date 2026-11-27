@@ -15,6 +15,8 @@ export type PermissionDecision = 'ALLOW' | 'BLOCK' | 'REQUIRE_APPROVAL' | 'SHADO
 export interface Postcondition {
   description?: string;
   check: (action: Action, output: any) => boolean | Promise<boolean>;
+  /** Best-effort rollback when the check fails. Detection is guaranteed; undo is not. */
+  compensate?: (action: Action, output: any) => void | Promise<void>;
 }
 
 export interface PermissionScope {
