@@ -27,7 +27,7 @@ export class AuditLogger {
     if (!this.secret) {
       console.warn(
         '⚠️  PERMISCOPE_AUDIT_SECRET not set. Audit logs are not cryptographically signed. ' +
-        'Set this environment variable in production for tamper detection.'
+          'Set this environment variable in production for tamper detection.',
       );
     }
 
@@ -85,9 +85,7 @@ export class AuditLogger {
       // Add signature if secret is available
       if (this.secret) {
         const entryString = JSON.stringify(fullEntry);
-        fullEntry.signature = createHmac('sha256', this.secret)
-          .update(entryString)
-          .digest('hex');
+        fullEntry.signature = createHmac('sha256', this.secret).update(entryString).digest('hex');
       }
 
       const entryWithHashForNext = JSON.stringify(fullEntry);
@@ -98,13 +96,14 @@ export class AuditLogger {
       console.error('Failed to write audit log:', e);
       // In strict mode, throw to ensure actions are not executed without logging
       if (this.strictMode) {
-        throw new Error(`Audit log write failed: ${e}. Action execution blocked due to strict logging mode.`);
+        throw new Error(
+          `Audit log write failed: ${e}. Action execution blocked due to strict logging mode.`,
+        );
       }
     } finally {
       if (release) await release();
     }
   }
-
 
   // Verify the integrity of the audit log
   verifyChain(): { valid: boolean; errors: string[] } {
@@ -128,7 +127,9 @@ export class AuditLogger {
 
         // Verify chain link
         if (entry.previousHash !== expectedPreviousHash) {
-          errors.push(`Line ${i + 1}: Hash chain broken. Expected ${expectedPreviousHash}, got ${entry.previousHash}`);
+          errors.push(
+            `Line ${i + 1}: Hash chain broken. Expected ${expectedPreviousHash}, got ${entry.previousHash}`,
+          );
         }
 
         // Verify signature if present and secret is available

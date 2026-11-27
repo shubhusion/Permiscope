@@ -13,7 +13,8 @@ core, so we keep a deliberately tight change process. Please read
 
 ## Development setup
 
-Node 22, 24, or 26 (all LTS as of 2026-11; Node 18 and 20 are EOL), npm 10+.
+Use Node 24 or 26 for development (npm 10+). The published library itself supports
+Node 20 and newer; the newer dev requirement comes from the TypeScript toolchain.
 
 ```bash
 git clone https://github.com/shubhusion/permiscope.git
@@ -54,6 +55,9 @@ An issue is **not done** until all of the following pass:
 - [ ] `npm test` exits clean — no leaked-handle warnings, no unexplained skipped suites.
 - [ ] CI is green on every matrix entry.
 - [ ] Manual verification steps, if any, are written in the PR body so others can repeat them.
+
+For documentation-only changes, verification means checked links, consistency with the
+code, and review — code tests are not required, but the PR body must say what was checked.
 
 "Works on my machine" is not evidence, and neither is a passing test that does not
 assert the behavior the issue describes.

@@ -1,0 +1,3 @@
+# Keep line endings stable across Windows and Linux CI. Prettier defaults to LF,
+# so checking out CRLF on Windows makes `npm run lint` fail with "Delete CR".
+* text=auto eol=lf

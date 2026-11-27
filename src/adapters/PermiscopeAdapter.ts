@@ -12,10 +12,10 @@ export interface AdapterConfig {
 
 /**
  * PermiscopeAdapter - The primary integration point for governing execution.
- * 
+ *
  * Use this to wrap any agent, script, or autonomous system.
  * Permiscope does NOT create agents; it governs what they can do.
- * 
+ *
  * @example
  * ```typescript
  * const permiscope = new PermiscopeAdapter({ policy: myPolicy });
@@ -68,11 +68,11 @@ export class PermiscopeAdapter {
   /**
    * Wrap an executor function with Permiscope governance.
    * Use this to integrate with any framework or custom agent loop.
-   * 
+   *
    * @param actionName The action type to govern
    * @param executor The function to wrap
    * @returns A governed version of the executor
-   * 
+   *
    * @example
    * ```typescript
    * const safeReadFile = permiscope.wrap('read_file', async (params) => {
@@ -83,7 +83,7 @@ export class PermiscopeAdapter {
    */
   wrap<T>(
     actionName: string,
-    executor: (params: Record<string, any>) => Promise<T>
+    executor: (params: Record<string, any>) => Promise<T>,
   ): (params: Record<string, any>, agentId?: string) => Promise<T> {
     return async (params: Record<string, any>, agentId?: string): Promise<T> => {
       // First, check policy
@@ -133,25 +133,25 @@ export class PermiscopeAdapter {
 /**
  * Quick utility to create a governed executor function.
  * Framework-agnostic helper for wrapping any function with Permiscope.
- * 
+ *
  * @param actionName The action type
  * @param executor The function to govern
  * @param config Optional adapter configuration
  * @returns A governed version of the executor
- * 
+ *
  * @example
  * ```typescript
  * const safeDelete = withPermiscope('delete_file', async (params) => {
  *   fs.unlinkSync(params.path);
  * }, { policy: strictPolicy });
- * 
+ *
  * await safeDelete({ path: '/tmp/file.txt' });
  * ```
  */
 export function withPermiscope<T>(
   actionName: string,
   executor: (params: Record<string, any>) => Promise<T>,
-  config?: AdapterConfig
+  config?: AdapterConfig,
 ): (params: Record<string, any>, agentId?: string) => Promise<T> {
   const adapter = new PermiscopeAdapter(config);
   return adapter.wrap(actionName, executor);

@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import { createHash } from 'crypto';
-import * as path from 'path';
 
 describe('Audit Log Integrity', () => {
   const logPath = './logs/audit.log';

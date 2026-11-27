@@ -1,10 +1,5 @@
 export type ActionType =
-  | 'read_file'
-  | 'write_file'
-  | 'run_command'
-  | 'call_api'
-  | 'send_email'
-  | string;
+  'read_file' | 'write_file' | 'run_command' | 'call_api' | 'send_email' | string;
 
 export interface Action {
   actionName: ActionType;

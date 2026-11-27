@@ -1,6 +1,7 @@
-import { ExecutionGateway } from '../gateway/ExecutionGateway';
-import { PolicyEngine } from '../engine/PolicyEngine';
-import { Policy, Action } from '../core/types';
+import { ExecutionGateway } from '../../gateway/ExecutionGateway';
+import { PolicyEngine } from '../../engine/PolicyEngine';
+import { Policy, Action } from '../../core/types';
+import * as fs from 'fs';
 import * as path from 'path';
 
 // ------------------------------------------------------------------
@@ -22,7 +23,7 @@ const realPolicy: Policy = {
       actionName: 'write_file',
       decision: 'ALLOW',
       allowedPaths: [TEST_DIR],
-      validator: (action) => {
+      validator: () => {
         // Additional safety: block overwriting existing secret file unless authorized?
         // For now, static path check is good enough.
         return true;
@@ -80,7 +81,6 @@ class AutonomousAgent {
 // MAIN TEST RUNNER
 // ------------------------------------------------------------------
 async function runScenarios() {
-  const fs = require('fs');
   if (!fs.existsSync(TEST_DIR)) fs.mkdirSync(TEST_DIR);
   // Create secret file
   fs.writeFileSync(SECRET_FILE, 'TOP_SECRET_API_KEY=12345');

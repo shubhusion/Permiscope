@@ -1,4 +1,4 @@
-import { createAgent, PermiscopeAdapter, Policy } from '../index';
+import { createAgent } from '../index';
 import { setupTestEnv, teardownTestEnv, TEST_ENV_DIR } from './utils';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,11 +21,6 @@ function logFail(test: string, reason: string) {
   console.log(`❌ FAIL: ${test} - ${reason}`);
   REPORT.failed.push(`${test}: ${reason}`);
   REPORT.score -= 2;
-}
-
-function logEdge(test: string, note: string) {
-  console.log(`⚠️ EDGE: ${test} - ${note}`);
-  REPORT.edgeCases.push(`${test}: ${note}`);
 }
 
 async function runTests() {
@@ -128,7 +123,7 @@ async function testCascadingFailures() {
     await agent.act('write_file', { path: dummyPath, content: 'x' });
     step = 3;
     await agent.act('delete_file', { path: dummyPath }); // Should not reach
-  } catch (e) {
+  } catch {
     // Expected fail at step 2
   }
 
@@ -175,7 +170,7 @@ async function testEdgeCases() {
   try {
     await agent.act('run_command', { command: 'echo test' });
     logFail('Async Validator Error', 'Failed open (allowed action on validator error)');
-  } catch (e: any) {
+  } catch {
     logPass('Async Validator Error (Fails Closed)');
   }
 }
@@ -195,7 +190,7 @@ async function testAuditIntegrity() {
   try {
     execSync('npm run audit:verify', { stdio: 'pipe' });
     logFail('Audit Tamper Detection', 'Verification passed despite corruption');
-  } catch (e) {
+  } catch {
     logPass('Audit Tamper Detection');
   }
 
@@ -245,7 +240,7 @@ async function testApprovalRobustness() {
     // Actually approve method loads based on key, derived from params.
     // If we call approve with DIFFERENT params/id, it won't affect THIS request.
     // Let's pass 'wrong_action' which generates a different key.
-    const res = gateway.approvalCache.approve(req.agentId, 'wrong_action', {});
+    gateway.approvalCache.approve(req.agentId, 'wrong_action', {});
     // approve void return? Check implementation. It sets status if item exists.
     // It does NOT throw if key not found, just creates a NEW approved entry (Pre-approval).
     // Testing robustness: calling approve wrong id shouldn't approve right id.
@@ -295,7 +290,7 @@ async function testRealWorkflow() {
         logFail(`Real Workflow (${step.cmd})`, 'Should have been blocked');
         success = false;
       }
-    } catch (e) {
+    } catch {
       if (step.expected === 'allow') {
         logFail(`Real Workflow (${step.cmd})`, 'Should have been allowed');
         success = false;
