@@ -24,8 +24,10 @@ PERMISCOPE_SIDECAR_TOKEN=dev-token npm run serve
 3. **Sidecar** — POST `/v1/decide` and `/v1/execute` with `echo hello`; confirm allow.
    Try `rm -rf /`; confirm block. Omit the token; confirm 401.
 4. **Python SDK** — `PYTHONPATH=python PERMISCOPE_SIDECAR_TOKEN=dev-token python python/example_agent.py`.
-5. **MCP** — run a stub tool through `McpGovernor` with `defaultMcpPolicy()`; confirm
-   approval and MCP-shaped result.
+5. **MCP** — automated tests connect `McpGovernor` to a **real** MCP SDK server over
+   `InMemoryTransport` (`src/tests/unit/mcpSdk.test.ts`), verifying tool listing,
+   governed execution and blocked calls. For manual exploration, run a stub tool through
+   `McpGovernor` with `defaultMcpPolicy()` and confirm the MCP-shaped result.
 6. **Budgets** — two calls with `maxCalls: 1`; second returns `BUDGET_EXCEEDED`.
 7. **Post-conditions** — executor that violates the scope returns `POSTCONDITION_FAILED`.
 8. **JWT** — valid token with role `admin` succeeds; expired or wrong-role token fails.
