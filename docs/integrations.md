@@ -103,7 +103,8 @@ Endpoints (all except `/health` require `Authorization: Bearer <token>`):
 Both endpoints share the same path: principal verification (when a provider is configured),
 role-gated scopes, approval cache and budget consumption. `/v1/decide` is a preview — it
 never executes or waits for approval, and a `REQUIRE_APPROVAL` decision is reported as-is.
-A decide call still consumes one budget attempt so policies cannot be probed for free.
+A decide call still records one budget attempt so policies cannot be probed for free,
+but it does not consume an execution — only actions that actually run do.
 
 Python clients need no third-party packages — see [python/README.md](../python/README.md).
 Non-loopback binding is refused unless the sidecar is created programmatically with

@@ -134,7 +134,10 @@ export class ExecutionGateway {
     const identity = governedAction.agentId;
     let budgetRemaining: BudgetRemaining | undefined;
     if (this.budgetTracker) {
-      const budget = await this.budgetTracker.consume(identity);
+      // Preflight does not mutate counters: a blocked call must not burn a
+      // future execution. Attempts are recorded separately for observability.
+      await this.budgetTracker.noteAttempt(identity);
+      const budget = await this.budgetTracker.check(identity);
       if (!budget.allowed) {
         return {
           governedAction,
@@ -208,10 +211,10 @@ export class ExecutionGateway {
       governedAction,
       identity,
       decision: preparedDecision,
-      budgetRemaining,
       budgetExceeded,
       shadow,
     } = prepared;
+    let budgetRemaining = prepared.budgetRemaining;
 
     if (budgetExceeded) {
       return {
@@ -274,6 +277,18 @@ export class ExecutionGateway {
       intentHash,
       result: { planned: true },
     });
+
+    // Reserve the execution only after the intent is durably recorded. A
+    // concurrent caller may have exhausted the budget in between.
+    if (!dryRun && decision === 'ALLOW' && this.budgetTracker) {
+      const reserved = await this.budgetTracker.consumeExecution(identity);
+      budgetRemaining = reserved.remaining;
+      if (!reserved.allowed) {
+        decision = 'BLOCK';
+        reasonCode = 'BUDGET_EXCEEDED';
+        error = 'Principal budget exceeded';
+      }
+    }
 
     if (shadow) {
       success = true;
