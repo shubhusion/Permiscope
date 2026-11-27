@@ -61,6 +61,10 @@ Node 24+ is required for both development and consumption; `engines.node` and CI
 Node 18, 20 and 22 are not tested. `npm run audit:verify` and
 `npm run fixture:web` are available locally; add them to CI before calling them gates.
 
+Use [docs/migration.md](./docs/migration.md) for upgrade notes and the compatibility
+policy. Deprecations must be announced in `CHANGELOG.md` and survive at least one minor
+release before removal.
+
 Coverage excludes the CLI, package barrel, dashboard glue and scenario scripts;
 those are exercised through smoke tests and are not unit-testable in isolation.
 Do not add them back to the threshold denominator without adding tests.

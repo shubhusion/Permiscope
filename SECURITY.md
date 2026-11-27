@@ -5,8 +5,12 @@
 | Version | Supported |
 |---|---|
 | 1.1.x | ✅ |
-| 1.0.x | ⚠️ Security fixes only |
+| 1.0.x | ⚠️ Best-effort security fixes |
 | < 1.0 | ❌ |
+
+Security fixes are applied to the latest minor first; older supported minors receive
+fixes at maintainer discretion. See [migration](./docs/migration.md) for the
+compatibility policy.
 
 ## Reporting a vulnerability
 

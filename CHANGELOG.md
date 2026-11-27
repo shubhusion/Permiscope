@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Verified JWT principals with role-gated policy scopes and sidecar token forwarding (#45).
 - Dual CommonJS/ESM package build with `check:package` and `prepublishOnly` (#46).
 - Composable typed policy builder with wildcards, roles and postconditions (#47).
+- Migration guide and explicit compatibility/deprecation policy (#49).
 - Browser/pages smoke check in the deploy workflow (#24).
 
 ### Changed
