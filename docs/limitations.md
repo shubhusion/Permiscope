@@ -1,6 +1,6 @@
 # Limitations
 
-This document describes known limitations and design tradeoffs in Permiscope.
+This document describes known limitations and design tradeoffs in Permiscope v1.1.0.
 
 ## Not a Sandbox
 
@@ -8,104 +8,103 @@ This document describes known limitations and design tradeoffs in Permiscope.
 > Permiscope does not provide process isolation.
 
 | What it does | What it doesn't do |
-|--------------|-------------------|
-| Intercepts API calls | Block `require('fs')` |
-| Enforces policies | Isolate memory |
-| Logs actions | Prevent native modules |
-| Requires approvals | Sandbox processes |
+|---|---|
+| Mediates governed API calls | Block direct `require('fs')` |
+| Enforces policies and approvals | Isolate memory |
+| Records a signed audit chain | Prevent native modules |
+| Runs a loopback sidecar | Sandbox child processes |
 
-**If an agent imports `fs` directly, Permiscope cannot intercept those calls.**
+If an agent imports `fs` directly or spawns processes outside the gateway, Permiscope
+cannot intercept those calls. Use containers, gVisor or VMs for adversarial environments.
 
 ## Cooperative Security Model
 
-Permiscope assumes agents use the provided APIs. Bypass is possible if:
+Permiscope assumes agents use the provided APIs. Bypass is possible if the agent uses
+Node built-ins directly, spawns processes outside the gateway, or loads native addons.
+Guardrails are deliberately conservative:
 
-- Agent uses Node.js built-ins directly
-- Agent spawns child processes outside Permiscope
-- Agent uses native addons
+- Command strings are tokenized with `shell-quote`; operators, nested shells and raw
+  `$`/backtick substitution are rejected. POSIX grammar is modelled; Windows `cmd.exe`
+  quoting is not, so unusual Windows commands may need a custom executor.
+- File paths are resolved with `realpathSync` and checked against allowed roots. A
+  symlink can still be swapped between the check and the write (TOCTOU); OS isolation
+  is the mitigation.
+- Case folding is applied only on Windows. POSIX paths are case-sensitive.
 
-For adversarial environments, combine with:
-- Container isolation (Docker, gVisor)
-- VM-level isolation
-- Language-level sandboxes (Deno, etc.)
+## Single Machine Only
 
-## Single-Machine Only
+- Approval storage is a local JSON file with `proper-lockfile`; no distributed coordination.
+- The audit log is a single file with an in-memory chain head; verification loads the
+  whole file. There is no rotation or streaming verification.
+- The dashboard is single-instance.
 
-- File locking is local
-- No distributed coordination
-- Dashboard is single-instance
-
-For multi-machine deployments, consider:
-- Shared database for approvals
-- Centralized logging (ELK, etc.)
-- Load balancer with sticky sessions
-
-## Log File Limitations
-
-| Limitation | Impact |
-|------------|--------|
-| Single file | Large logs slow verification |
-| No rotation | Manual archival required |
-| Synchronous verify | Blocks during read |
-| No streaming | Full file loaded for verify |
+For multi-machine deployments, use a shared database for approvals, centralized log
+collection, and a reverse proxy with TLS.
 
 ## Approval System
 
 | Limitation | Workaround |
-|------------|------------|
+|---|---|
 | No batch approvals | Review one by one |
-| No conditional approvals | Use validators in policy |
-| No roles/groups | Single token auth |
-| TTL is per-action | Manual revocation for others |
+| No conditional approvals beyond validators | Encode conditions in policy validators |
+| No roles/groups | One dashboard bearer token; use separate deployments for separation |
+| TTL is per action | Revoke explicitly when policy changes |
+
+The dashboard API requires a bearer token on every route. Log parameter values are
+redacted by default; `?raw=1` exposes them to administrators.
 
 ## Policy Engine
 
 | Limitation | Notes |
-|------------|-------|
-| Regex performance | ReDoS protection may skip patterns |
-| Case sensitivity | Paths are case-insensitive (Windows compat) |
+|---|---|
+| Regex performance | Unsafe patterns are skipped with a warning |
 | No wildcards in action names | Must match exactly |
 | No inheritance | Each scope is independent |
+| Exact action names only | Custom executors can bridge edge cases |
 
-## Dashboard
+## Dashboard and Sidecar
 
 | Limitation | Notes |
-|------------|-------|
-| No HTTPS | Requires reverse proxy |
-| Localhost only | CORS restriction |
-| No user management | Single token |
-| No search | Logs displayed as-is |
+|---|---|
+| No HTTPS in the bundled server | Put it behind a reverse proxy |
+| Localhost by default | CORS restricts browser origins; it is not authentication |
+| No user management | Single bearer token |
+| Sidecar has one static token | No per-principal tokens, rate limiting or replay protection |
+| Sidecar binds loopback unless explicitly allowed | Use `allowRemote: true` only behind TLS |
+
+The public demo is read-only and fixture-backed; it never calls a live approval API.
 
 ## Concurrency
 
 | Limitation | Impact |
-|------------|--------|
+|---|---|
 | File locking | Contention under high load |
 | No queueing | Actions wait for locks |
-| Retry limit | 3 attempts, then fail |
+| Retry limit | 3 attempts, then the operation fails |
 
 ## Action Execution
 
 | Limitation | Notes |
-|------------|-------|
-| Shell commands | `exec` is dangerous |
-| No timeout | Commands can hang |
-| No resource limits | CPU/memory unbounded |
-| Windows paths | Normalized but may have edge cases |
+|---|---|
+| Command timeout | 10 seconds by default; configurable via `timeoutMs` |
+| Output cap | 1 MB by default; configurable via `maxOutputBytes` |
+| No CPU/memory limits | Use OS-level resource controls |
+| Built-in commands are minimal | `read_file`, `write_file`, `run_command`, plus `echo` shim on Windows |
 
 ## What Users Must Not Rely On
 
-1. **100% bypass prevention** — Use OS isolation
-2. **Sub-millisecond latency** — Lock overhead exists
-3. **Cross-machine sync** — Local only
-4. **Auto-rotation of logs** — Manual process
-5. **Complete audit under high load** — Strict mode may block
+1. **100% bypass prevention** — use OS isolation.
+2. **Sub-millisecond latency** — lock and realpath overhead exists.
+3. **Cross-machine sync** — local only.
+4. **Auto-rotation of logs** — manual process.
+5. **Complete audit under high load** — strict mode blocks if logging fails.
 
 ## Design Tradeoffs
 
 | Choice | Tradeoff |
-|--------|----------|
+|---|---|
 | File-based storage | Simple, but not scalable |
 | Synchronous policies | Predictable, but blocking |
 | Single log file | Easy verification, but size issues |
-| CLI polling | Universal, but not instant |
+| argv execution | Safe from shell injection, but no shell features |
+| Static demo fixture | Safe public artifact, but not live data |

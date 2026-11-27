@@ -40,3 +40,7 @@ data/
 # Python
 __pycache__/
 *.pyc
+
+# Python build artifacts
+build/
+*.egg-info/
