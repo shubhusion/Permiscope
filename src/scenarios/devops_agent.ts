@@ -1,8 +1,8 @@
 import { PermiscopeAdapter } from '../adapters/PermiscopeAdapter';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Mock Config Files
-const fs = require('fs');
 const NGINX_CONF = path.resolve('temp_test_env', 'nginx.conf');
 if (!fs.existsSync('temp_test_env')) fs.mkdirSync('temp_test_env');
 fs.writeFileSync(NGINX_CONF, 'worker_processes 1;');
@@ -29,7 +29,7 @@ async function runDevOpsScenario() {
 
   // 1. Check Config
   console.log('🤖 Agent: Checking nginx config...');
-  const config = await adapter.act('read_file', { path: NGINX_CONF });
+  await adapter.act('read_file', { path: NGINX_CONF });
   console.log('✅ Config read success.');
 
   // 2. Try Restart (Dangerous)
@@ -60,7 +60,6 @@ async function runDevOpsScenario() {
 }
 
 if (require.main === module) {
-  const fs = require('fs');
   if (!fs.existsSync('temp_test_env')) fs.mkdirSync('temp_test_env');
   runDevOpsScenario();
 }

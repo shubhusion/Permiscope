@@ -1,5 +1,6 @@
 import { PermiscopeAdapter } from '../adapters/PermiscopeAdapter';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Mock Data Environment
 const DATA_DIR = path.resolve('temp_test_env', 'data');
@@ -27,7 +28,7 @@ async function runDataScenario() {
   try {
     await adapter.act('read_file', { path: path.join(RAW_DIR, 'input.csv') });
     console.log('✅ Read raw data.');
-  } catch (e) {
+  } catch {
     // Might fail if file doesn't exist, but intended to be allowed.
     // We'll mock the file first.
     console.log('   (File read simulated)');
@@ -51,7 +52,6 @@ async function runDataScenario() {
 }
 
 if (require.main === module) {
-  const fs = require('fs');
   if (!fs.existsSync(RAW_DIR)) fs.mkdirSync(RAW_DIR, { recursive: true });
   if (!fs.existsSync(PROCESSED_DIR)) fs.mkdirSync(PROCESSED_DIR, { recursive: true });
   fs.writeFileSync(path.join(RAW_DIR, 'input.csv'), 'id,value\n1,100');

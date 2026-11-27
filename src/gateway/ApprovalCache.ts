@@ -94,7 +94,11 @@ export class ApprovalCache {
     return new Date(item.expiresAt) < new Date();
   }
 
-  async isApproved(agentId: string, actionName: string, params: Record<string, any>): Promise<boolean> {
+  async isApproved(
+    agentId: string,
+    actionName: string,
+    params: Record<string, any>,
+  ): Promise<boolean> {
     await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     const item = this.cache.get(key);
@@ -113,7 +117,11 @@ export class ApprovalCache {
     return true;
   }
 
-  async isRejected(agentId: string, actionName: string, params: Record<string, any>): Promise<boolean> {
+  async isRejected(
+    agentId: string,
+    actionName: string,
+    params: Record<string, any>,
+  ): Promise<boolean> {
     await this.loadWithLock();
     const key = this.getKey(agentId, actionName, params);
     const item = this.cache.get(key);
@@ -165,7 +173,7 @@ export class ApprovalCache {
     await this.loadWithLock();
     // Filter out expired approvals for display
     const all = Array.from(this.cache.values());
-    return all.filter(item => !this.isExpired(item) || item.status === 'PENDING');
+    return all.filter((item) => !this.isExpired(item) || item.status === 'PENDING');
   }
 
   async updateStatus(id: string, status: 'APPROVED' | 'REJECTED') {

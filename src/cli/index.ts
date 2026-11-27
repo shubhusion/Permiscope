@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { defaultPolicy } from '../defaults/defaultPolicy';
 import { createAgent } from '../index';
 
 async function runDemo() {
@@ -29,7 +28,7 @@ async function runDemo() {
   console.log("► [Action 2] Agent tries DANGEROUS command: \x1b[33m'rm -rf /'\x1b[0m");
   try {
     await agent.act('run_command', { command: 'rm -rf /' });
-  } catch (e: any) {
+  } catch {
     console.log(`   \x1b[31m🛡️  BLOCKED BY POLICY:\x1b[0m Dangerous pattern detected!`);
     console.log(`   (Your system is safe)`);
   }

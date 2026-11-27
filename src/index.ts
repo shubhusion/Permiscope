@@ -1,4 +1,4 @@
-import { PermiscopeAdapter, withPermiscope } from './adapters/PermiscopeAdapter';
+import { PermiscopeAdapter } from './adapters/PermiscopeAdapter';
 import { defaultPolicy } from './defaults/defaultPolicy';
 import { Policy } from './core/types';
 
@@ -28,16 +28,16 @@ export * from './core/types';
 /**
  * Quick-start helper for demos and testing.
  * For production, use PermiscopeAdapter directly for more control.
- * 
+ *
  * @deprecated Prefer `new PermiscopeAdapter(config)` for clarity.
  * This function exists for backward compatibility and quick demos.
- * 
+ *
  * @example
  * ```typescript
  * // Quick demo:
  * const agent = createAgent();
  * await agent.act('read_file', { path: 'test.txt' });
- * 
+ *
  * // Recommended production pattern:
  * const permiscope = new PermiscopeAdapter({ policy: myPolicy });
  * await permiscope.act('read_file', { path: 'test.txt' });

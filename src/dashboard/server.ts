@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import * as fs from 'fs';
 import * as path from 'path';
-import bodyParser from 'body-parser';
+
 import { ApprovalCache } from '../gateway/ApprovalCache';
 
 const app = express();
@@ -14,25 +14,31 @@ const API_TOKEN = process.env.PERMISCOPE_DASHBOARD_TOKEN;
 if (!API_TOKEN) {
   console.warn(
     '⚠️  PERMISCOPE_DASHBOARD_TOKEN not set. Dashboard API is unauthenticated! ' +
-    'Set this environment variable in production for security.'
+      'Set this environment variable in production for security.',
   );
 }
 
 // Security: Restrict CORS to localhost only
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  methods: ['GET', 'POST'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  }),
+);
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const approvalCache = new ApprovalCache();
 const logPath = './logs/audit.log';
 
 // Authentication middleware for API routes
-const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const authMiddleware = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) => {
   // Skip auth in development if no token is set
   if (!API_TOKEN) {
     return next();
@@ -59,14 +65,14 @@ app.get('/api/logs', (req, res) => {
       .map((line) => {
         try {
           return JSON.parse(line);
-        } catch (e) {
+        } catch {
           return null;
         }
       })
       .filter((l) => l !== null)
       .reverse(); // Newest first
     res.json(logs);
-  } catch (e) {
+  } catch {
     res.status(500).json({ error: 'Failed to read logs' });
   }
 });
@@ -94,7 +100,7 @@ app.post('/api/approvals/:id', authMiddleware, async (req, res) => {
 
   // Validate that the ID exists before updating
   const all = await approvalCache.getAll();
-  const exists = all.some(item => item.id === id);
+  const exists = all.some((item) => item.id === id);
   if (!exists) {
     return res.status(404).json({ error: 'Approval request not found' });
   }
@@ -102,7 +108,6 @@ app.post('/api/approvals/:id', authMiddleware, async (req, res) => {
   await approvalCache.updateStatus(id, status as 'APPROVED' | 'REJECTED');
   res.json({ success: true });
 });
-
 
 app.listen(port, () => {
   console.log(`Permiscope Dashboard running at http://localhost:${port}`);

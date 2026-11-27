@@ -91,8 +91,10 @@ export class PolicyEngine {
       const resolvedAllowed = path.resolve(path.normalize(allowed)).toLowerCase();
       // Ensure the resolved path starts with the allowed directory
       // Add path.sep to prevent /tmp matching /tmpevil
-      return resolvedInput.startsWith(resolvedAllowed) ||
-        resolvedInput.startsWith(resolvedAllowed + path.sep);
+      return (
+        resolvedInput.startsWith(resolvedAllowed) ||
+        resolvedInput.startsWith(resolvedAllowed + path.sep)
+      );
     });
   }
 

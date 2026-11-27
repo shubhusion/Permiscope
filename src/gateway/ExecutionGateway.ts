@@ -1,4 +1,6 @@
 import * as readline from 'readline';
+import * as fs from 'fs';
+import { exec } from 'child_process';
 import { Action, PermissionDecision } from '../core/types';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { AuditLogger } from '../logging/AuditLogger';
@@ -34,7 +36,9 @@ export class ExecutionGateway {
 
     // Check approval cache if needed
     if (decision === 'REQUIRE_APPROVAL') {
-      if (await this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters)) {
+      if (
+        await this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters)
+      ) {
         decision = 'ALLOW';
       } else if (dryRun) {
         // In dry run, we stop here and report that approval would be needed
@@ -72,13 +76,15 @@ export class ExecutionGateway {
     }
 
     // Log it (async, but we don't block on it for performance)
-    this.auditLogger.log({
-      timestamp: new Date().toISOString(),
-      agentId: action.agentId,
-      action: action,
-      decision: decision,
-      result: { success, output, error, dryRun },
-    }).catch(e => console.error('Audit log error:', e));
+    this.auditLogger
+      .log({
+        timestamp: new Date().toISOString(),
+        agentId: action.agentId,
+        action: action,
+        decision: decision,
+        result: { success, output, error, dryRun },
+      })
+      .catch((e) => console.error('Audit log error:', e));
 
     return { decision, success, output, error };
   }
@@ -100,8 +106,16 @@ export class ExecutionGateway {
     return new Promise((resolve) => {
       // Poll for external approval (Dashboard)
       const pollInterval = setInterval(async () => {
-        const approved = await this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters);
-        const rejected = await this.approvalCache.isRejected(action.agentId, action.actionName, action.parameters);
+        const approved = await this.approvalCache.isApproved(
+          action.agentId,
+          action.actionName,
+          action.parameters,
+        );
+        const rejected = await this.approvalCache.isRejected(
+          action.agentId,
+          action.actionName,
+          action.parameters,
+        );
 
         if (approved) {
           clearInterval(pollInterval);
@@ -117,7 +131,8 @@ export class ExecutionGateway {
       }, 500);
 
       rl.question('Allow this action? (y/N): ', (answer) => {
-        if (rl.line !== undefined) { // Check if not already closed by poll
+        if (rl.line !== undefined) {
+          // Check if not already closed by poll
           clearInterval(pollInterval);
           rl.close();
           resolve(answer.toLowerCase() === 'y');
@@ -138,21 +153,18 @@ export class ExecutionGateway {
     switch (actionName) {
       case 'read_file':
         if (!parameters.path) throw new Error('Missing path parameter');
-        const fs = require('fs').promises;
-        return await fs.readFile(parameters.path, 'utf-8');
+        return await fs.promises.readFile(parameters.path, 'utf-8');
 
       case 'write_file':
         if (!parameters.path) throw new Error('Missing path parameter');
         const content = parameters.content || '';
-        const fsWrite = require('fs').promises;
-        await fsWrite.writeFile(parameters.path, content, 'utf-8');
+        await fs.promises.writeFile(parameters.path, content, 'utf-8');
         return `File written to ${parameters.path}`;
 
       case 'run_command':
         if (!parameters.command) throw new Error('Missing command parameter');
-        const cp = require('child_process');
         return new Promise((resolve, reject) => {
-          cp.exec(parameters.command, (error: any, stdout: string, stderr: string) => {
+          exec(parameters.command, (error: any, stdout: string, stderr: string) => {
             if (error) {
               reject(new Error(`Command failed: ${stderr || error.message}`));
             } else {

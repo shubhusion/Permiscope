@@ -1,6 +1,5 @@
 import { Policy } from '../core/types';
 import * as os from 'os';
-import * as path from 'path';
 
 const TEMP_DIR = os.tmpdir();
 
@@ -14,8 +13,14 @@ export const defaultPolicy: Policy = {
       validator: (action) => {
         const p = (action.parameters.path || '').toLowerCase();
         // Return true for sensitive files that need approval
-        return p.includes('.env') || p.includes('id_rsa') || p.includes('shadow') ||
-          p.includes('passwd') || p.includes('.pem') || p.includes('.key');
+        return (
+          p.includes('.env') ||
+          p.includes('id_rsa') ||
+          p.includes('shadow') ||
+          p.includes('passwd') ||
+          p.includes('.pem') ||
+          p.includes('.key')
+        );
       },
     },
 
