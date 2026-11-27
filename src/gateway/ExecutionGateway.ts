@@ -159,6 +159,24 @@ export class ExecutionGateway {
         try {
           output = await this.executeAction(governedAction, executor);
           success = true;
+
+          for (const scope of this.policyEngine.scopesFor(governedAction)) {
+            for (const postcondition of scope.postconditions ?? []) {
+              let passed = false;
+              try {
+                passed = await postcondition.check(governedAction, output);
+              } catch {
+                passed = false;
+              }
+              if (!passed) {
+                success = false;
+                error = `Postcondition failed: ${postcondition.description ?? 'check'}`;
+                reasonCode = 'POSTCONDITION_FAILED';
+                break;
+              }
+            }
+            if (!success) break;
+          }
         } catch (e: any) {
           success = false;
           error = e.message;

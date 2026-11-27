@@ -149,6 +149,32 @@ Reason codes: `ALLOWED`, `APPROVAL_REQUIRED`, `NO_MATCHING_SCOPE`,
 `ExecutionGateway.run()` exposes `reasonCode`, `matchedScope` and `remediation` on its
 result, and `PermiscopeAdapter` includes the reason in thrown errors.
 
+## Post-conditions
+
+A scope can declare checks that run **after** the executor finishes. They verify that
+the action stayed inside the approved scope, not just that the pre-execution guardrails
+passed:
+
+```typescript
+import { isPathWithin } from 'permiscope';
+
+{
+  actionName: 'write_file',
+  decision: 'ALLOW',
+  allowedPaths: ['/tmp'],
+  postconditions: [
+    {
+      description: 'target must remain inside /tmp',
+      check: (action) => isPathWithin(action.parameters.path, ['/tmp']),
+    },
+  ],
+}
+```
+
+A failed or throwing post-condition makes the result unsuccessful with reason code
+`POSTCONDITION_FAILED` and writes that outcome to the audit chain. Post-conditions are
+additive; existing policies without them behave exactly as before.
+
 ## Budgets
 
 An `ExecutionGateway` can be created with a `budget` or a shared `BudgetTracker`:
