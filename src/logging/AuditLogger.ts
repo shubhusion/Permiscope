@@ -6,6 +6,27 @@ import { AuditLogEntry } from '../core/types';
 
 const GENESIS = '0'.repeat(64);
 
+const SENSITIVE_KEY = /(token|secret|password|passwd|authorization|api[-_]?key|credential|bearer)/i;
+const SECRET_VALUE = /^(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|Bearer\s+\S+)$/i;
+
+function redactSensitive(value: any, seen = new WeakSet<object>()): any {
+  if (value === null || typeof value !== 'object') {
+    return typeof value === 'string' && SECRET_VALUE.test(value) ? '[redacted]' : value;
+  }
+  if (Array.isArray(value)) return value.map((item) => redactSensitive(item, seen));
+  // Preserve Date/Buffer and other non-plain objects; JSON.stringify handles them.
+  if (value instanceof Date) return value;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+  if (seen.has(value)) return '[circular]';
+  seen.add(value);
+  const result: Record<string, any> = {};
+  for (const [key, item] of Object.entries(value)) {
+    result[key] = SENSITIVE_KEY.test(key) ? '[redacted]' : redactSensitive(item, seen);
+  }
+  return result;
+}
+
 export interface AuditLoggerOptions {
   secret?: string;
   keyId?: string;
@@ -131,7 +152,10 @@ export class AuditLogger {
         }
       }
 
-      const full: AuditLogEntry = { ...entry, sequence, previousHash: this.lastHash };
+      // Defence in depth: credentials never belong on the domain object, but if
+      // one slips into a parameter or result, scrub it before it hits the log.
+      const safeEntry = redactSensitive(entry);
+      const full: AuditLogEntry = { ...safeEntry, sequence, previousHash: this.lastHash };
       if (this.secret) {
         full.keyId = this.keyId;
         full.signature = this.sign(full);

@@ -29,6 +29,8 @@ export { BudgetTracker } from './gateway/BudgetTracker';
 export type { Budget, BudgetRemaining, BudgetCheck } from './gateway/BudgetTracker';
 export { PolicyEngine } from './engine/PolicyEngine';
 export { isPathWithin } from './engine/pathGuard';
+export { withRequestContext, requestContext, requestToken } from './core/requestContext';
+export type { RequestContext } from './core/requestContext';
 export { defaultPolicy } from './defaults/defaultPolicy';
 export { definePolicy, PolicyBuilder, ScopeBuilder } from './policy/builder';
 export { createSidecar, startSidecar } from './sidecar/server';

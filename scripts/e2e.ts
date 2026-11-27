@@ -9,6 +9,7 @@ import { PolicyEngine } from '../src/engine/PolicyEngine';
 import { ApprovalCache } from '../src/gateway/ApprovalCache';
 import { AuditLogger } from '../src/logging/AuditLogger';
 import { verifiedPrincipalProvider, signHs256Token } from '../src/auth/verifiedPrincipal';
+import { withRequestContext } from '../src/core/requestContext';
 import { Policy } from '../src/core/types';
 
 const root = path.resolve(__dirname, '..');
@@ -171,8 +172,14 @@ async function main(): Promise<void> {
 
     console.log('JWT principals:');
     const secret = 'e2e-jwt-secret';
-    const principal = await verifiedPrincipalProvider({ secret })(
-      { actionName: 'noop', parameters: {}, agentId: 'spoofed', timestamp: new Date(), token: signHs256Token({ sub: 'alice', roles: ['admin'] }, secret) },
+    const jwt = signHs256Token({ sub: 'alice', roles: ['admin'] }, secret);
+    const principal = await withRequestContext({ token: jwt }, () =>
+      verifiedPrincipalProvider({ secret })({
+        actionName: 'noop',
+        parameters: {},
+        agentId: 'spoofed',
+        timestamp: new Date(),
+      }),
     );
     check(principal.id === 'alice' && !!principal.roles?.includes('admin'), 'JWT principal verified');
 
