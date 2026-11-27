@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-27
+
+This release fixes five security defects found in a self-audit before publishing:
+a bearer-token leak into audit logs, strict logging that failed after the side effect,
+a `/v1/decide` governance bypass, fail-open validator semantics and fail-open regex
+filtering. It also publishes the first registry release that actually contains the
+v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
+
 ### Added
 
 - Structured denial reasons via `evaluateDetailed()` and gateway result fields (#30).
@@ -23,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-process end-to-end harness (`npm run e2e`) and manual validation checklist (#58).
 - Real MCP SDK client/server integration tests via `InMemoryTransport` (#58).
 - Browser/pages smoke check in the deploy workflow (#24).
+- Release workflow with npm provenance and a tarball install/quick-start smoke test (#67).
 
 ### Changed
 
