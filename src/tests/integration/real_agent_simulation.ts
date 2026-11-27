@@ -86,7 +86,7 @@ async function runScenarios() {
   fs.writeFileSync(SECRET_FILE, 'TOP_SECRET_API_KEY=12345');
 
   const policyEngine = new PolicyEngine(realPolicy);
-  const gateway = new ExecutionGateway(policyEngine);
+  const gateway = new ExecutionGateway(policyEngine, {}, { defaultPrincipalId: 'real-agent-v1' });
   const agent = new AutonomousAgent('real-agent-v1', gateway);
 
   console.log('🚀 STARTING REAL AGENT INTEGRATION TEST\n');
@@ -133,7 +133,8 @@ async function runScenarios() {
 
   // 2. Simulate Approval
   const approvalCache = (gateway as any).approvalCache; // Access private
-  approvalCache.approve('real-agent-v1', 'read_file', readParams);
+  await approvalCache.requestApproval('real-agent-v1', 'read_file', readParams);
+  await approvalCache.approve('real-agent-v1', 'read_file', readParams);
   console.log('   (User Approved via Dashboard)');
 
   // 3. Real Run

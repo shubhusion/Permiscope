@@ -8,6 +8,19 @@ import { AuditLogger } from '../logging/AuditLogger';
 import { ApprovalCache } from './ApprovalCache';
 
 export type ActionExecutor = (params: any) => Promise<any>;
+export type PrincipalProvider = (action: Action) => Principal | Promise<Principal>;
+export type Approver = (request: ApprovalRequest) => Promise<boolean>;
+
+export interface Principal {
+  id: string;
+}
+
+export interface ApprovalRequest {
+  agentId: string;
+  actionName: string;
+  params: Record<string, any>;
+  reason?: string;
+}
 
 export interface GatewayResult {
   decision: PermissionDecision;
@@ -16,17 +29,50 @@ export interface GatewayResult {
   error?: string;
 }
 
+export interface GatewayOptions {
+  defaultPrincipalId?: string;
+  principalProvider?: PrincipalProvider;
+  approver?: Approver;
+  approvalTimeoutMs?: number;
+  approvalPollIntervalMs?: number;
+  approvalCache?: ApprovalCache;
+  auditLogger?: AuditLogger;
+}
+
 export class ExecutionGateway {
   private policyEngine: PolicyEngine;
   private auditLogger: AuditLogger;
   private approvalCache: ApprovalCache;
   private customExecutors: Record<string, ActionExecutor>;
+  private defaultPrincipalId: string;
+  private principalProvider?: PrincipalProvider;
+  private approver?: Approver;
+  private approvalTimeoutMs: number;
+  private approvalPollIntervalMs: number;
+  private closed = false;
+  private cancelWaits = new Set<() => void>();
 
-  constructor(policyEngine: PolicyEngine, customExecutors: Record<string, ActionExecutor> = {}) {
+  constructor(
+    policyEngine: PolicyEngine,
+    customExecutors: Record<string, ActionExecutor> = {},
+    options: GatewayOptions = {},
+  ) {
     this.policyEngine = policyEngine;
-    this.auditLogger = new AuditLogger();
-    this.approvalCache = new ApprovalCache();
+    this.auditLogger = options.auditLogger ?? new AuditLogger();
+    this.approvalCache = options.approvalCache ?? new ApprovalCache();
     this.customExecutors = customExecutors;
+    this.defaultPrincipalId = options.defaultPrincipalId ?? 'external-system';
+    this.principalProvider = options.principalProvider;
+    this.approver = options.approver;
+    this.approvalTimeoutMs = options.approvalTimeoutMs ?? 30_000;
+    this.approvalPollIntervalMs = options.approvalPollIntervalMs ?? 500;
+  }
+
+  /** Stops in-flight approval waits; pending actions fail closed. */
+  close(): void {
+    this.closed = true;
+    for (const cancel of Array.from(this.cancelWaits)) cancel();
+    this.cancelWaits.clear();
   }
 
   async run(
@@ -34,24 +80,38 @@ export class ExecutionGateway {
     dryRun: boolean = false,
     executor?: ActionExecutor,
   ): Promise<GatewayResult> {
-    let decision = await this.policyEngine.evaluate(action);
+    // Identity comes from the host-provided principal provider, never from the
+    // caller-controlled agentId on the Action.
+    const principal = this.principalProvider
+      ? await this.principalProvider(action)
+      : { id: this.defaultPrincipalId };
+    const governedAction: Action = { ...action, agentId: principal?.id || this.defaultPrincipalId };
+
+    let decision = await this.policyEngine.evaluate(governedAction);
     let success = false;
     let output = null;
     let error = undefined;
+    const identity = governedAction.agentId;
 
-    // Check approval cache if needed
     if (decision === 'REQUIRE_APPROVAL') {
       if (
-        await this.approvalCache.isApproved(action.agentId, action.actionName, action.parameters)
+        await this.approvalCache.isApproved(
+          identity,
+          governedAction.actionName,
+          governedAction.parameters,
+        )
       ) {
         decision = 'ALLOW';
       } else if (dryRun) {
-        // In dry run, we stop here and report that approval would be needed
+        // Report that approval would be needed without starting a wait.
       } else {
-        // Request actual human approval (now with polling!)
-        const approved = await this.requestHumanApproval(action);
+        const approved = await this.requestApproval(governedAction, identity);
         if (approved) {
-          await this.approvalCache.approve(action.agentId, action.actionName, action.parameters);
+          await this.approvalCache.approve(
+            identity,
+            governedAction.actionName,
+            governedAction.parameters,
+          );
           decision = 'ALLOW';
         } else {
           decision = 'BLOCK';
@@ -59,20 +119,19 @@ export class ExecutionGateway {
       }
     }
 
-    // Execute if allowed
     if (decision === 'ALLOW') {
       if (dryRun) {
         success = true;
       } else {
         try {
-          output = await this.executeAction(action, executor);
+          output = await this.executeAction(governedAction, executor);
           success = true;
         } catch (e: any) {
           success = false;
           error = e.message;
         }
       }
-    } else if (decision === 'BLOCK' && (action as any).shadowMode) {
+    } else if (decision === 'BLOCK' && (governedAction as any).shadowMode) {
       decision = 'SHADOW_BLOCK';
       success = true;
       output = '[SHADOW] Action appeared successful.';
@@ -80,69 +139,107 @@ export class ExecutionGateway {
       success = false;
     }
 
-    // Log it (async, but we don't block on it for performance)
-    this.auditLogger
-      .log({
-        timestamp: new Date().toISOString(),
-        agentId: action.agentId,
-        action: action,
-        decision: decision,
-        result: { success, output, error, dryRun },
-      })
-      .catch((e) => console.error('Audit log error:', e));
+    // Await the record: a detached promise both loses strict-mode failures and
+    // leaves a lockfile handle open when a test or process exits.
+    await this.auditLogger.log({
+      timestamp: new Date().toISOString(),
+      agentId: governedAction.agentId,
+      action: governedAction,
+      decision: decision,
+      result: { success, output, error, dryRun },
+    });
 
     return { decision, success, output, error };
   }
 
-  private async requestHumanApproval(action: Action): Promise<boolean> {
-    await this.approvalCache.requestApproval(action.agentId, action.actionName, action.parameters);
+  private async requestApproval(action: Action, identity: string): Promise<boolean> {
+    await this.approvalCache.requestApproval(identity, action.actionName, action.parameters);
+    const request: ApprovalRequest = {
+      agentId: identity,
+      actionName: action.actionName,
+      params: action.parameters,
+      reason: action.reason,
+    };
 
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
+    if (this.approver) {
+      const approved = await this.approver(request);
+      if (!approved) return false;
+      await this.approvalCache.approve(identity, action.actionName, action.parameters);
+      return true;
+    }
 
-    console.log('\n--- PERMISCOPE SECURITY ALERT ---');
-    console.log(`Agent '${action.agentId}' wants to perform: ${action.actionName}`);
-    console.log('Parameters:', JSON.stringify(action.parameters, null, 2));
-    if (action.reason) console.log('Reason:', action.reason);
-    console.log('👉 Go to http://localhost:3000 to approve, OR respond here.');
+    if (this.closed) return false;
+    return this.waitForExternalDecision(
+      identity,
+      action.actionName,
+      action.parameters,
+      action.reason,
+    );
+  }
 
-    return new Promise((resolve) => {
-      // Poll for external approval (Dashboard)
-      const pollInterval = setInterval(async () => {
-        const approved = await this.approvalCache.isApproved(
-          action.agentId,
-          action.actionName,
-          action.parameters,
-        );
-        const rejected = await this.approvalCache.isRejected(
-          action.agentId,
-          action.actionName,
-          action.parameters,
-        );
+  /** Poll the dashboard with a hard timeout; no TTY means no interactive prompt. */
+  private waitForExternalDecision(
+    identity: string,
+    actionName: string,
+    params: Record<string, any>,
+    reason?: string,
+  ): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      if (this.closed) {
+        resolve(false);
+        return;
+      }
 
+      let settled = false;
+      let rl: readline.Interface | undefined;
+
+      const finish = async (approved: boolean): Promise<void> => {
+        if (settled) return;
+        settled = true;
+        clearInterval(pollTimer);
+        clearTimeout(timeoutTimer);
+        this.cancelWaits.delete(cancel);
+        rl?.close();
         if (approved) {
-          clearInterval(pollInterval);
-          rl.close();
-          console.log('\n✅ Approved via Dashboard.');
-          resolve(true);
-        } else if (rejected) {
-          clearInterval(pollInterval);
-          rl.close();
-          console.log('\n❌ Rejected via Dashboard.');
-          resolve(false);
+          await this.approvalCache.approve(identity, actionName, params);
         }
-      }, 500);
+        resolve(approved);
+      };
+      const cancel = (): void => {
+        void finish(false);
+      };
 
-      rl.question('Allow this action? (y/N): ', (answer) => {
-        if (rl.line !== undefined) {
-          // Check if not already closed by poll
-          clearInterval(pollInterval);
-          rl.close();
-          resolve(answer.toLowerCase() === 'y');
-        }
-      });
+      const pollTimer = setInterval(() => {
+        void (async () => {
+          try {
+            if (await this.approvalCache.isApproved(identity, actionName, params)) {
+              await finish(true);
+            } else if (await this.approvalCache.isRejected(identity, actionName, params)) {
+              await finish(false);
+            }
+          } catch {
+            await finish(false);
+          }
+        })();
+      }, this.approvalPollIntervalMs);
+      pollTimer.unref?.();
+
+      const timeoutTimer = setTimeout(() => {
+        void finish(false);
+      }, this.approvalTimeoutMs);
+      timeoutTimer.unref?.();
+      this.cancelWaits.add(cancel);
+
+      if (process.stdin.isTTY) {
+        rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        console.log('\n--- PERMISCOPE SECURITY ALERT ---');
+        console.log(`Agent '${identity}' wants to perform: ${actionName}`);
+        console.log('Parameters:', JSON.stringify(params, null, 2));
+        if (reason) console.log('Reason:', reason);
+        rl.question('Allow this action? (y/N): ', (answer) => {
+          void finish(answer.trim().toLowerCase() === 'y');
+        });
+      }
     });
   }
 

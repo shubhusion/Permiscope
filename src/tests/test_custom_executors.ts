@@ -40,7 +40,8 @@ async function testCustomExecutors() {
 
   // Approve via cache (simulating Dashboard)
   await new Promise((r) => setTimeout(r, 200));
-  gateway.approvalCache.approve('safe-agent', 'charge_card', { amount: 50 });
+  await gateway.approvalCache.requestApproval('demo-agent', 'charge_card', { amount: 50 });
+  await gateway.approvalCache.approve('demo-agent', 'charge_card', { amount: 50 });
 
   const res2 = await actionPromise;
   console.log(`   Result: ${res2}`);
