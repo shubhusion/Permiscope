@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python SDK packaging metadata (`pyproject.toml`) (#28).
 - Automated Python SDK and built-web-asset tests (#33).
 - First-class MCP tool-call adapter with wildcard action scopes (#42).
+- Per-principal budgets with call/spend caps and `BUDGET_EXCEEDED` reason code (#43).
 - Browser/pages smoke check in the deploy workflow (#24).
 
 ### Changed

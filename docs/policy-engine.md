@@ -149,6 +149,23 @@ Reason codes: `ALLOWED`, `APPROVAL_REQUIRED`, `NO_MATCHING_SCOPE`,
 `ExecutionGateway.run()` exposes `reasonCode`, `matchedScope` and `remediation` on its
 result, and `PermiscopeAdapter` includes the reason in thrown errors.
 
+## Budgets
+
+An `ExecutionGateway` can be created with a `budget` or a shared `BudgetTracker`:
+
+```typescript
+const gateway = new ExecutionGateway(engine, executors, {
+  budget: { maxCalls: 100, maxSpend: 10, costPerCall: 0.5, windowMs: 3_600_000 },
+});
+```
+
+Budgets are keyed by the authenticated principal and reset after `windowMs`. When a
+limit is reached, `run()` returns `BUDGET_EXCEEDED` without executing the action and
+without consuming further budget. Successful results include `budgetRemaining`.
+
+Budgets are in-process and single-machine; use an external limiter for distributed
+deployments.
+
 ## Debugging
 
 Enable logging to see evaluation:

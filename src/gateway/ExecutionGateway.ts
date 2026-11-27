@@ -6,6 +6,7 @@ import { parseCommand } from '../engine/commandPolicy';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { AuditLogger } from '../logging/AuditLogger';
 import { ApprovalCache } from './ApprovalCache';
+import { Budget, BudgetRemaining, BudgetTracker } from './BudgetTracker';
 
 export type ActionExecutor = (params: any) => Promise<any>;
 export type PrincipalProvider = (action: Action) => Principal | Promise<Principal>;
@@ -30,6 +31,7 @@ export interface GatewayResult {
   reasonCode?: string;
   matchedScope?: string;
   remediation?: string;
+  budgetRemaining?: BudgetRemaining;
 }
 
 export interface GatewayOptions {
@@ -40,6 +42,8 @@ export interface GatewayOptions {
   approvalPollIntervalMs?: number;
   approvalCache?: ApprovalCache;
   auditLogger?: AuditLogger;
+  budget?: Budget;
+  budgetTracker?: BudgetTracker;
 }
 
 export class ExecutionGateway {
@@ -54,6 +58,7 @@ export class ExecutionGateway {
   private approvalPollIntervalMs: number;
   private closed = false;
   private cancelWaits = new Set<() => void>();
+  private budgetTracker?: BudgetTracker;
 
   constructor(
     policyEngine: PolicyEngine,
@@ -69,6 +74,10 @@ export class ExecutionGateway {
     this.approver = options.approver;
     this.approvalTimeoutMs = options.approvalTimeoutMs ?? 30_000;
     this.approvalPollIntervalMs = options.approvalPollIntervalMs ?? 500;
+    this.budgetTracker = options.budgetTracker;
+    if (!this.budgetTracker && options.budget) {
+      this.budgetTracker = new BudgetTracker({ [this.defaultPrincipalId]: options.budget });
+    }
   }
 
   /** Stops in-flight approval waits; pending actions fail closed. */
@@ -90,6 +99,21 @@ export class ExecutionGateway {
       : { id: this.defaultPrincipalId };
     const governedAction: Action = { ...action, agentId: principal?.id || this.defaultPrincipalId };
 
+    const identity = governedAction.agentId;
+    let budgetRemaining: BudgetRemaining | undefined;
+    if (this.budgetTracker) {
+      const budget = await this.budgetTracker.consume(identity);
+      if (!budget.allowed) {
+        return {
+          decision: 'BLOCK',
+          success: false,
+          reasonCode: 'BUDGET_EXCEEDED',
+          error: 'Principal budget exceeded',
+        };
+      }
+      budgetRemaining = budget.remaining;
+    }
+
     const explanation = await this.policyEngine.evaluateDetailed(governedAction);
     let decision = explanation.decision;
     let reasonCode = explanation.reasonCode;
@@ -98,7 +122,6 @@ export class ExecutionGateway {
     let success = false;
     let output = null;
     let error = undefined;
-    const identity = governedAction.agentId;
 
     if (decision === 'REQUIRE_APPROVAL') {
       if (
@@ -159,7 +182,16 @@ export class ExecutionGateway {
       result: { success, output, error, dryRun },
     });
 
-    return { decision, success, output, error, reasonCode, matchedScope, remediation };
+    return {
+      decision,
+      success,
+      output,
+      error,
+      reasonCode,
+      matchedScope,
+      remediation,
+      budgetRemaining,
+    };
   }
 
   private async requestApproval(action: Action, identity: string): Promise<boolean> {
