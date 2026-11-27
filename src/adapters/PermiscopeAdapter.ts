@@ -86,7 +86,6 @@ export class PermiscopeAdapter {
     executor: (params: Record<string, any>) => Promise<T>,
   ): (params: Record<string, any>, agentId?: string) => Promise<T> {
     return async (params: Record<string, any>, agentId?: string): Promise<T> => {
-      // First, check policy
       const action: Action = {
         actionName: actionName as any,
         parameters: params,
@@ -94,24 +93,19 @@ export class PermiscopeAdapter {
         timestamp: new Date(),
       };
 
-      const decision = await this.engine.evaluate(action);
-
-      if (decision === 'BLOCK') {
-        throw new Error(`Permiscope Blocked Action: ${actionName} - Policy Violation`);
+      if (this.shadowMode) {
+        (action as any).shadowMode = true;
       }
 
-      if (decision === 'REQUIRE_APPROVAL') {
-        // Go through full gateway flow for approval
-        const result = await this.gateway.run(action);
-        if (!result.success) {
-          throw new Error(`Permiscope Blocked Action: ${result.decision} - ${result.error}`);
-        }
-        // After approval, execute the custom executor
-        return executor(params);
+      // Every governed call goes through the gateway exactly once: policy,
+      // approval, execution and audit stay on a single path.
+      const result = await this.gateway.run(action, false, executor);
+      if (!result.success) {
+        throw new Error(
+          `Permiscope Blocked Action: ${result.decision} - ${result.error || 'Policy Violation'}`,
+        );
       }
-
-      // ALLOW - execute directly
-      return executor(params);
+      return result.output as T;
     };
   }
 

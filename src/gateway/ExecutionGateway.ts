@@ -29,7 +29,11 @@ export class ExecutionGateway {
     this.customExecutors = customExecutors;
   }
 
-  async run(action: Action, dryRun: boolean = false): Promise<GatewayResult> {
+  async run(
+    action: Action,
+    dryRun: boolean = false,
+    executor?: ActionExecutor,
+  ): Promise<GatewayResult> {
     let decision = await this.policyEngine.evaluate(action);
     let success = false;
     let output = null;
@@ -61,7 +65,7 @@ export class ExecutionGateway {
         success = true;
       } else {
         try {
-          output = await this.executeAction(action);
+          output = await this.executeAction(action, executor);
           success = true;
         } catch (e: any) {
           success = false;
@@ -142,10 +146,12 @@ export class ExecutionGateway {
     });
   }
 
-  private async executeAction(action: Action): Promise<any> {
+  private async executeAction(action: Action, executor?: ActionExecutor): Promise<any> {
     const { actionName, parameters } = action;
 
-    // 1. Try Custom Executors first
+    // 1. A per-call executor (used by wrap()) wins, then configured executors.
+    // Passing it through the gateway keeps one execution path and one audit entry.
+    if (executor) return await executor(parameters);
     if (this.customExecutors[actionName]) {
       return await this.customExecutors[actionName](parameters);
     }
