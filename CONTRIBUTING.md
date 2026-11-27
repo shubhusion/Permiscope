@@ -13,7 +13,8 @@ core, so we keep a deliberately tight change process. Please read
 
 ## Development setup
 
-Node 22, 24, or 26 (all LTS as of 2026-11; Node 18 and 20 are EOL), npm 10+.
+Use Node 24 or 26 for development (npm 10+). The published library itself supports
+Node 20 and newer; the newer dev requirement comes from the TypeScript toolchain.
 
 ```bash
 git clone https://github.com/shubhusion/permiscope.git

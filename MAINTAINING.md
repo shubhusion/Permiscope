@@ -46,8 +46,9 @@ should start with [CONTRIBUTING.md](./CONTRIBUTING.md).
 ### Required checks
 
 CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run build`, `npm test` and
-`npm run lint` on Ubuntu and Windows with Node 22, 24 and 26. Node 18 and 20 are EOL and
-are no longer tested. The following are still being added in v1.1.0 and are **not** yet
+`npm run lint` on Ubuntu and Windows with Node 24 and 26. Development needs Node 24+ for
+the TypeScript toolchain; the published library supports Node 20 and newer. Node 18 and
+20 are not tested. The following are still being added in v1.1.0 and are **not** yet
 enforced by CI:
 
 - `npm run audit:verify` (currently a broken script, repaired in issue #4)
