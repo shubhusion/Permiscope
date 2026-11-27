@@ -148,7 +148,14 @@ export function startSidecar(options: SidecarOptions): Promise<Server> {
   const host = options.host ?? '127.0.0.1';
   const port = options.port ?? 8787;
   const { app } = createSidecar(options);
-  return new Promise((resolve) => {
-    const server = app.listen(port, host, () => resolve(server));
+  return new Promise((resolve, reject) => {
+    // Express 5 attaches the listen callback to 'error' as well, invoking it
+    // with the error as its first argument. Check that before resolving.
+    const server = app.listen(port, host, (error?: Error) => {
+      if (error) reject(error);
+      else resolve(server);
+    });
+    // Safety net for non-Express servers that emit 'error' without calling back.
+    server.on('error', reject);
   });
 }

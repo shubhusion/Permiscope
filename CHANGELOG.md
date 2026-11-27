@@ -55,6 +55,7 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
 - `Idempotency-Key` support on `/v1/execute` with a bounded, TTL'd replay cache and concurrent deduplication (#72).
 - Audit output and errors are redacted by default; raw dashboard views still scrub credential-shaped fields (#73).
 - Dashboard CORS follows `PERMISCOPE_DASHBOARD_PORT`; the ignored `_agentId` adapter parameter is removed (#74).
+- Sidecar bind failures reject cleanly; roadmap, Node-version and limitations docs reconciled with shipped code (#75).
 - Audit head record is HMAC-signed and verified with the key ring (#27).
 - GitHub Pages demo blank page caused by a case-mismatched asset base path (#24).
 - High-severity dependency advisories patched (#29).
@@ -84,7 +85,7 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
 - **Approval identity**: approvals are keyed to an authenticated principal supplied
   by the host via `principalProvider`; caller-provided `agentId` is no longer trusted. (#18)
 - **Strict logging**: audit writes are awaited, so strict-mode failures propagate. (#18)
-- Development requires Node 24+; the published library supports Node 20+. (#13)
+- Node 24+ is required for both development and the published library; earlier drafts of these notes mentioned Node 20, which was never supported by `engines.node`. (#13, corrected in #28, #32)
 - Switched to TypeScript 7 native compiler with a TS 6 compatibility API for
   ts-jest and typescript-eslint. (#13)
 - Added an `exports` map and coverage thresholds.
