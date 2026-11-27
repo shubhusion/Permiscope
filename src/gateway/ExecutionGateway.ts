@@ -1,7 +1,8 @@
 import * as readline from 'readline';
 import * as fs from 'fs';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import { Action, PermissionDecision } from '../core/types';
+import { parseCommand } from '../engine/commandPolicy';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { AuditLogger } from '../logging/AuditLogger';
 import { ApprovalCache } from './ApprovalCache';
@@ -161,17 +162,68 @@ export class ExecutionGateway {
         await fs.promises.writeFile(parameters.path, content, 'utf-8');
         return `File written to ${parameters.path}`;
 
-      case 'run_command':
+      case 'run_command': {
         if (!parameters.command) throw new Error('Missing command parameter');
-        return new Promise((resolve, reject) => {
-          exec(parameters.command, (error: any, stdout: string, stderr: string) => {
-            if (error) {
-              reject(new Error(`Command failed: ${stderr || error.message}`));
-            } else {
-              resolve(stdout.trim());
+        const parsed = parseCommand(parameters.command);
+        if (!parsed.ok) throw new Error(`Command rejected: ${parsed.reason}`);
+
+        const [program, ...args] = parsed.argv;
+        // `echo` is a shell builtin on Windows, not an executable. Emulate it so a
+        // governed command behaves the same on every supported platform.
+        if (
+          process.platform === 'win32' &&
+          program.split(/[\\/]/).pop()?.toLowerCase() === 'echo'
+        ) {
+          return args.join(' ');
+        }
+
+        const timeoutMs = typeof parameters.timeoutMs === 'number' ? parameters.timeoutMs : 10_000;
+        const maxOutputBytes =
+          typeof parameters.maxOutputBytes === 'number' ? parameters.maxOutputBytes : 1024 * 1024;
+
+        return new Promise<string>((resolve, reject) => {
+          const child = spawn(program, args, { shell: false, windowsHide: true });
+          let stdout = '';
+          let stderr = '';
+          let timedOut = false;
+          let overflowed = false;
+
+          const timer = setTimeout(() => {
+            timedOut = true;
+            child.kill();
+          }, timeoutMs);
+          timer.unref();
+
+          const collect = (chunk: Buffer, stream: 'out' | 'err'): string => {
+            const next = (stream === 'out' ? stdout : stderr) + chunk.toString('utf8');
+            if (Buffer.byteLength(next, 'utf8') > maxOutputBytes) {
+              overflowed = true;
+              child.kill();
+              return next.slice(0, maxOutputBytes);
             }
+            return next;
+          };
+
+          child.stdout?.on('data', (chunk: Buffer) => {
+            stdout = collect(chunk, 'out');
+          });
+          child.stderr?.on('data', (chunk: Buffer) => {
+            stderr = collect(chunk, 'err');
+          });
+          child.on('error', (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+          child.on('close', (code) => {
+            clearTimeout(timer);
+            if (timedOut) reject(new Error(`Command timed out after ${timeoutMs}ms`));
+            else if (overflowed)
+              reject(new Error(`Command output exceeded ${maxOutputBytes} bytes`));
+            else if (code === 0) resolve(stdout.trim());
+            else reject(new Error(`Command failed: ${stderr.trim() || `exit code ${code}`}`));
           });
         });
+      }
 
       default:
         throw new Error(`Unknown action type: ${actionName} - No executor available.`);

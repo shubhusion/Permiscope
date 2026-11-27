@@ -57,13 +57,18 @@ No scopes match → BLOCK (default deny)
 }
 ```
 
-- Patterns are **regex strings**
-- Commands are **normalized** before matching:
-  - Backslashes stripped
-  - Quotes removed
-  - Command substitution (`$()`, backticks) stripped
-  - Multiple spaces collapsed
-- **ReDoS protection**: Unsafe patterns are skipped
+- Patterns are **regex strings**, compiled once per policy and matched
+  case-insensitively against the parsed argument list joined with spaces.
+- Commands are **parsed with `shell-quote`**, not mutated:
+  - Shell operators (`&&`, `|`, `>`, `$(`, comments) cause a **BLOCK** — they are
+    rejected rather than stripped.
+  - Nested shells (`sh -c`, `cmd /c`, PowerShell `-Command`) cause a **BLOCK**.
+  - Quoted words become single arguments; repeated whitespace is collapsed naturally.
+- Parsing failures fail closed: a command we cannot understand is blocked.
+- Allowed commands are executed via `spawn()` with an **argv array and no shell**, with
+  a timeout and output limit. `shell-quote` quoting is POSIX-only; on Windows the
+  gateway uses argv directly and emulates the `echo` builtin.
+- **ReDoS protection**: unsafe regex patterns are skipped with a warning.
 
 ### Dynamic Validators
 

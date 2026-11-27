@@ -1,9 +1,11 @@
 import { Action, PermissionScope, Policy, PermissionDecision } from '../core/types';
 import * as path from 'path';
 import safeRegex from 'safe-regex';
+import { parseCommand } from './commandPolicy';
 
 export class PolicyEngine {
   private policy: Policy;
+  private patternCache = new Map<string, RegExp | null>();
 
   constructor(policy: Policy) {
     this.policy = policy;
@@ -103,33 +105,33 @@ export class PolicyEngine {
     blockedPatterns: string[] | undefined,
   ): boolean {
     if (!blockedPatterns) return false; // No restrictions
-    if (!command) return true; // Block empty command if patterns exist? Safe bet.
+    if (!command) return true;
 
-    // Normalize command to prevent simple shell evasion (backslashes, varied quoting)
-    const normalized = this.normalizeCommand(command);
+    // Parse before matching. A parse failure fails closed: we cannot authorize
+    // a command whose structure we do not understand.
+    const parsed = parseCommand(command);
+    if (!parsed.ok) return true;
 
+    const normalized = parsed.argv.join(' ');
     for (const pattern of blockedPatterns) {
-      // ReDoS protection: check if regex is safe before using
-      if (!safeRegex(pattern)) {
-        console.warn(`⚠️  Skipping unsafe regex pattern (potential ReDoS): ${pattern}`);
-        continue;
-      }
-
-      const regex = new RegExp(pattern);
-      if (regex.test(normalized)) {
-        return true;
-      }
+      const regex = this.getPattern(pattern);
+      if (regex && regex.test(normalized)) return true;
     }
     return false;
   }
 
-  private normalizeCommand(cmd: string): string {
-    return cmd
-      .replace(/\\/g, '') // Strip backslashes used for escaping
-      .replace(/['"`]/g, '') // Strip quotes (including backticks)
-      .replace(/\$\([^)]*\)/g, '') // Strip command substitution $()
-      .replace(/`[^`]*`/g, '') // Strip backtick substitution
-      .replace(/\s+/g, ' ') // Collapse multiple spaces
-      .trim();
+  private getPattern(pattern: string): RegExp | null {
+    if (this.patternCache.has(pattern)) return this.patternCache.get(pattern) ?? null;
+
+    // Compile once per policy instead of on every evaluation.
+    if (!safeRegex(pattern)) {
+      console.warn(`⚠️  Skipping unsafe regex pattern (potential ReDoS): ${pattern}`);
+      this.patternCache.set(pattern, null);
+      return null;
+    }
+
+    const regex = new RegExp(pattern, 'i');
+    this.patternCache.set(pattern, regex);
+    return regex;
   }
 }
