@@ -222,12 +222,21 @@ const gateway = new ExecutionGateway(engine, executors, {
 });
 ```
 
-Budgets are keyed by the authenticated principal and reset after `windowMs`. When a
-limit is reached, `run()` returns `BUDGET_EXCEEDED` without executing the action and
-without consuming further budget. Successful results include `budgetRemaining`.
+Budgets are keyed by the authenticated principal and reset after `windowMs`. Ordering
+is deliberate:
 
-Budgets are in-process and single-machine; use an external limiter for distributed
-deployments.
+1. `noteAttempt()` records every governable call, including policy-blocked ones.
+2. `check()` is a non-mutating preflight — a blocked call does **not** burn an execution.
+3. `consumeExecution()` atomically reserves a call immediately before the side effect.
+   A concurrent caller can therefore still trigger `BUDGET_EXCEEDED` at this point.
+
+Results include `budgetRemaining`. `BudgetTracker` also exposes `snapshotFor()` with
+separate `attempts` and `executed` counters.
+
+By default budgets are in-process and single-machine. For distributed deployments,
+pass a `BudgetStore` implementing atomic `compareAndSet` per principal (for example a
+Redis WATCH/MULTI or a versioned database row) as the tracker's second constructor
+argument; all trackers sharing that store share the budget.
 
 ## Debugging
 

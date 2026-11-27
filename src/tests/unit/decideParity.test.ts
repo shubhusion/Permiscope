@@ -79,12 +79,17 @@ describe('decide/execute parity', () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
-  test('budgets apply to decide calls', async () => {
+  test('decide records attempts but does not consume executions', async () => {
     const gw = gateway({ maxCalls: 1 });
     const first = await withToken(token(['admin']), () => gw.decide(action()));
     const second = await withToken(token(['admin']), () => gw.decide(action()));
     expect(first).toBe('ALLOW');
-    expect(second).toBe('BLOCK');
+    expect(second).toBe('ALLOW');
+
+    // The single execution is consumed by run(), after which decide also blocks.
+    await withToken(token(['admin']), () => gw.run(action()));
+    const afterExhaustion = await withToken(token(['admin']), () => gw.decide(action()));
+    expect(afterExhaustion).toBe('BLOCK');
   });
 
   test('caller-supplied roles cannot override the verified principal', async () => {

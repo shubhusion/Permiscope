@@ -26,7 +26,13 @@ export type { AdapterConfig } from './adapters/PermiscopeAdapter';
 // ============================================
 export { ExecutionGateway } from './gateway/ExecutionGateway';
 export { BudgetTracker } from './gateway/BudgetTracker';
-export type { Budget, BudgetRemaining, BudgetCheck } from './gateway/BudgetTracker';
+export type {
+  Budget,
+  BudgetRemaining,
+  BudgetCheck,
+  BudgetSnapshot,
+  BudgetStore,
+} from './gateway/BudgetTracker';
 export { PolicyEngine } from './engine/PolicyEngine';
 export { isPathWithin, resolveGuardedPath } from './engine/pathGuard';
 export type { GuardedPathResult } from './engine/pathGuard';

@@ -1,5 +1,5 @@
 import { ExecutionGateway } from '../../gateway/ExecutionGateway';
-import { BudgetTracker } from '../../gateway/BudgetTracker';
+import { BudgetSnapshot, BudgetStore, BudgetTracker } from '../../gateway/BudgetTracker';
 import { ApprovalCache } from '../../gateway/ApprovalCache';
 import { AuditLogger } from '../../logging/AuditLogger';
 import { PolicyEngine } from '../../engine/PolicyEngine';
@@ -53,7 +53,7 @@ describe('action budgets', () => {
     expect((await gw.run(action())).success).toBe(true);
     const second = await gw.run(action());
     expect(second.reasonCode).toBe('BUDGET_EXCEEDED');
-    expect(second.budgetRemaining).toBeUndefined();
+    expect(second.budgetRemaining).toEqual({ calls: null, spend: 2 });
   });
 
   test('reset clears the window', async () => {
@@ -70,5 +70,56 @@ describe('action budgets', () => {
     const gw = gateway();
     expect((await gw.run(action())).success).toBe(true);
     expect((await gw.run(action())).success).toBe(true);
+  });
+
+  test('policy-blocked calls are recorded as attempts but do not consume executions', async () => {
+    const tracker = new BudgetTracker({ 'budget-test': { maxCalls: 1 } });
+    const gw = new ExecutionGateway(
+      new PolicyEngine({
+        scopes: [
+          { actionName: 'safe', decision: 'ALLOW' },
+          { actionName: 'blocked', decision: 'BLOCK' },
+        ],
+      }),
+      { safe: async () => 'ok' },
+      { auditLogger, approvalCache, defaultPrincipalId: 'budget-test', budgetTracker: tracker },
+    );
+    const blocked = { ...action(), actionName: 'blocked' as const };
+
+    expect((await gw.run(blocked)).decision).toBe('BLOCK');
+    expect((await gw.run(blocked)).decision).toBe('BLOCK');
+    expect((await gw.run(action())).success).toBe(true);
+
+    const snapshot = await tracker.snapshotFor('budget-test');
+    expect(snapshot?.attempts).toBe(3);
+    expect(snapshot?.executed).toBe(1);
+  });
+
+  test('concurrent calls never exceed the execution cap', async () => {
+    const tracker = new BudgetTracker({ 'budget-test': { maxCalls: 2 } });
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () => gateway(tracker).run(action())),
+    );
+    expect(results.filter((result) => result.success)).toHaveLength(2);
+    expect(results.filter((result) => result.reasonCode === 'BUDGET_EXCEEDED')).toHaveLength(4);
+    expect((await tracker.snapshotFor('budget-test'))?.executed).toBe(2);
+  });
+
+  test('a shared store makes the budget common to multiple trackers', async () => {
+    const shared = new Map<string, BudgetSnapshot>();
+    const store: BudgetStore = {
+      read: async (principal) => shared.get(principal) ?? null,
+      compareAndSet: async (principal, expected, next) => {
+        const current = shared.get(principal) ?? null;
+        if (JSON.stringify(current) !== JSON.stringify(expected)) return false;
+        shared.set(principal, next);
+        return true;
+      },
+    };
+    const first = new BudgetTracker({ 'budget-test': { maxCalls: 1 } }, store);
+    const second = new BudgetTracker({ 'budget-test': { maxCalls: 1 } }, store);
+
+    expect((await gateway(first).run(action())).success).toBe(true);
+    expect((await gateway(second).run(action())).reasonCode).toBe('BUDGET_EXCEEDED');
   });
 });
