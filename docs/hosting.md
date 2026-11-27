@@ -22,7 +22,9 @@ npm run build:web       # output: dist/web
 
 GitHub Pages is configured in `.github/workflows/pages.yml` and deploys on every push
 to `main`. Enable Pages with "GitHub Actions" as the source in repository settings.
-The workflow builds with `VITE_BASE=/permiscope/` and `VITE_DEMO_MODE=true`.
+The workflow builds with `VITE_BASE=./` and `VITE_DEMO_MODE=true`. Relative asset
+paths are deliberate: GitHub Pages serves this repository at `/Permiscope/` (capital
+P), and an absolute lowercase base would 404 the JS, CSS and fixture.
 
 Cloudflare Pages is also supported manually:
 
