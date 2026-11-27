@@ -1,11 +1,16 @@
 """Example: govern a Python tool call through the Permiscope sidecar."""
 
+import os
+
 from permiscope import Permiscope, PermiscopeError
 
 # Start the sidecar first:
 #   PERMISCOPE_SIDECAR_TOKEN=dev-token npx permiscope serve
 
-permiscope = Permiscope(token="dev-token")
+permiscope = Permiscope(
+    base_url=os.environ.get("PERMISCOPE_SIDECAR_URL", "http://127.0.0.1:8787"),
+    token=os.environ.get("PERMISCOPE_SIDECAR_TOKEN", "dev-token"),
+)
 
 decision = permiscope.decide("run_command", {"command": "echo hello"})
 print(f"policy decision: {decision}")

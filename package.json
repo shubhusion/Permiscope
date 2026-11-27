@@ -23,6 +23,7 @@
     "typecheck:web": "tsc -p web/tsconfig.json --noEmit",
     "fixture:web": "ts-node scripts/generate-demo-fixture.ts",
     "bench": "ts-node scripts/benchmark.ts",
+    "e2e": "ts-node scripts/e2e.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\""

@@ -321,6 +321,7 @@ See the [`/docs`](./docs) folder for detailed guides:
 - [Hosting the demo](./docs/hosting.md) — Local console and static deployment
 - [Architecture post](./docs/architecture-post.md) — Decisions, threat model and limits
 - [FAQ](./docs/faq.md) — Common questions
+- [End-to-end validation](./docs/e2e.md) — Live process checks and manual checklist
 - [Performance](./docs/performance.md) — Bench script and measured overhead
 - [Migration guide](./docs/migration.md) — Upgrading and compatibility policy
 - [Roadmap](./ROADMAP.md) — Shipped work and what comes next

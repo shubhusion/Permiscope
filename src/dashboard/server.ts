@@ -7,7 +7,7 @@ import { ApprovalCache } from '../gateway/ApprovalCache';
 import { AuditLogger } from '../logging/AuditLogger';
 
 export const app = express();
-const port = 3000;
+const port = Number(process.env.PERMISCOPE_DASHBOARD_PORT ?? 3000);
 
 // Security: API token from environment variable
 const API_TOKEN = process.env.PERMISCOPE_DASHBOARD_TOKEN;
