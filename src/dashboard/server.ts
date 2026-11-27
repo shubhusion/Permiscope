@@ -22,7 +22,7 @@ if (!API_TOKEN) {
 // Security: Restrict CORS to localhost only
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: [`http://localhost:${port}`, `http://127.0.0.1:${port}`],
     methods: ['GET', 'POST'],
     credentials: true,
   }),
