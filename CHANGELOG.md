@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migration guide and explicit compatibility/deprecation policy (#49).
 - Deterministic fuzz tests and a repeatable benchmark script with recorded numbers (#48).
 - Real-process end-to-end harness (`npm run e2e`) and manual validation checklist (#58).
+- Real MCP SDK client/server integration tests via `InMemoryTransport` (#58).
 - Browser/pages smoke check in the deploy workflow (#24).
 
 ### Changed
