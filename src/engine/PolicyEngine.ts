@@ -1,5 +1,6 @@
 import { Action, PermissionScope, Policy, PermissionDecision } from '../core/types';
 import * as path from 'path';
+import * as fs from 'fs';
 import safeRegex from 'safe-regex';
 import { parseCommand } from './commandPolicy';
 
@@ -83,21 +84,61 @@ export class PolicyEngine {
   }
 
   private isValidPath(inputPath: string | undefined, allowedPaths: string[] | undefined): boolean {
-    if (!allowedPaths) return true; // No restrictions
+    // Fail closed: "no roots configured" must never mean "any path".
+    if (!allowedPaths || allowedPaths.length === 0) return false;
     if (!inputPath) return false;
 
-    // Normalize and resolve the input path to prevent traversal attacks
-    const resolvedInput = path.resolve(path.normalize(inputPath)).toLowerCase();
+    const target = this.resolveForCheck(inputPath);
+    if (!target) return false;
 
     return allowedPaths.some((allowed) => {
-      const resolvedAllowed = path.resolve(path.normalize(allowed)).toLowerCase();
-      // Ensure the resolved path starts with the allowed directory
-      // Add path.sep to prevent /tmp matching /tmpevil
+      // A configured root must exist. Widening a missing root to its nearest
+      // existing ancestor would silently expand e.g. C:\tmp to C:\.
+      const root = this.resolveRoot(allowed);
+      if (!root) return false;
+
+      const relative = path.relative(
+        this.normalizeForComparison(root),
+        this.normalizeForComparison(target),
+      );
       return (
-        resolvedInput.startsWith(resolvedAllowed) ||
-        resolvedInput.startsWith(resolvedAllowed + path.sep)
+        relative === '' ||
+        (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative))
       );
     });
+  }
+
+  private resolveRoot(input: string): string | null {
+    try {
+      return fs.realpathSync(path.resolve(input));
+    } catch {
+      return null;
+    }
+  }
+
+  private normalizeForComparison(value: string): string {
+    // Windows paths are case-insensitive; POSIX paths are not. Lowercasing on
+    // POSIX would *widen* access by treating /TMP as /tmp.
+    return process.platform === 'win32' ? value.toLowerCase() : value;
+  }
+
+  /**
+   * Resolve traversal and symlinks before comparison. A write target often does
+   * not exist yet, so resolve its nearest existing parent instead — otherwise a
+   * symlinked parent could escape the allowed root unnoticed.
+   */
+  private resolveForCheck(input: string): string | null {
+    try {
+      let candidate = path.resolve(input);
+      while (!fs.existsSync(candidate)) {
+        const parent = path.dirname(candidate);
+        if (parent === candidate) return null;
+        candidate = parent;
+      }
+      return fs.realpathSync(candidate);
+    } catch {
+      return null;
+    }
   }
 
   private isBlockedCommand(

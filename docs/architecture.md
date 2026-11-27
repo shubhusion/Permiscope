@@ -81,7 +81,7 @@ graph TD
 
 | Boundary | Description |
 |----------|-------------|
-| **Agent ↔ Adapter** | Untrusted input. All parameters are validated. |
+| **Agent ↔ Adapter** | Untrusted input. Parameters are checked by policy guardrails. |
 | **Gateway ↔ PolicyEngine** | Internal, trusted interface. |
 | **Gateway ↔ System** | Actions are mediated. No direct agent access. |
 | **Dashboard ↔ ApprovalCache** | Requires authentication token. |

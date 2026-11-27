@@ -2,6 +2,8 @@ import { Policy } from '../core/types';
 import * as os from 'os';
 
 const TEMP_DIR = os.tmpdir();
+const WORKSPACE = process.cwd();
+const READ_ROOTS = [WORKSPACE, TEMP_DIR];
 
 export const defaultPolicy: Policy = {
   scopes: [
@@ -10,6 +12,7 @@ export const defaultPolicy: Policy = {
     {
       actionName: 'read_file',
       decision: 'REQUIRE_APPROVAL',
+      allowedPaths: READ_ROOTS,
       validator: (action) => {
         const p = (action.parameters.path || '').toLowerCase();
         // Return true for sensitive files that need approval
@@ -54,6 +57,7 @@ export const defaultPolicy: Policy = {
     {
       actionName: 'read_file',
       decision: 'ALLOW',
+      allowedPaths: READ_ROOTS,
     },
   ],
 };
