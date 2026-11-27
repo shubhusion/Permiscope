@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Structured denial reasons via `evaluateDetailed()` and gateway result fields (#30).
+- Python SDK packaging metadata (`pyproject.toml`) (#28).
+- Browser/pages smoke check in the deploy workflow (#24).
+
+### Changed
+
+- Dashboard API requires a bearer token on every route and redacts log parameters by default (#26).
+- Coverage thresholds raised to 70/65/72/72 (#31).
+- `npm audit --audit-level=high` added to CI (#29).
+- `engines.node` is now `>=24`, matching the tested matrix (#32).
+- Documentation updated for v1.1.0 behavior (#28).
+
+### Fixed
+
+- Audit head record is HMAC-signed and verified with the key ring (#27).
+- GitHub Pages demo blank page caused by a case-mismatched asset base path (#24).
+- High-severity dependency advisories patched (#29).
+- README and docs no longer claim Node 20 support or stale dashboard behavior (#28, #32).
 
 ## [1.1.0] - 2026-11-27
 

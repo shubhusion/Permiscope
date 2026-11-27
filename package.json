@@ -48,7 +48,7 @@
   },
   "type": "commonjs",
   "engines": {
-    "node": ">=20",
+    "node": ">=24",
     "npm": ">=10"
   },
   "files": [
