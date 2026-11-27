@@ -11,6 +11,14 @@ import { Policy } from './core/types';
  * Wrap your agent, script, or automation with governed execution.
  */
 export { PermiscopeAdapter, withPermiscope } from './adapters/PermiscopeAdapter';
+export { McpGovernor, defaultMcpPolicy } from './adapters/McpGovernor';
+export type {
+  McpClientLike,
+  McpToolDescriptor,
+  McpToolList,
+  McpGovernorOptions,
+  McpCallResult,
+} from './adapters/McpGovernor';
 export type { AdapterConfig } from './adapters/PermiscopeAdapter';
 
 // ============================================

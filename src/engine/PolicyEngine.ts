@@ -78,8 +78,12 @@ export class PolicyEngine {
   }
 
   private findMatchingScopes(action: Action): PermissionScope[] {
-    // Return all matching scopes, not just the first
-    return this.policy.scopes.filter((s) => s.actionName === action.actionName);
+    // Exact matches plus suffix wildcards such as 'mcp:*'.
+    return this.policy.scopes.filter(
+      (s) =>
+        s.actionName === action.actionName ||
+        (s.actionName.endsWith('*') && action.actionName.startsWith(s.actionName.slice(0, -1))),
+    );
   }
 
   private async checkGuardrails(

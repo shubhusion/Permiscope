@@ -106,6 +106,32 @@ Non-loopback binding is refused unless the sidecar is created programmatically w
 
 ---
 
+## MCP tool calls
+
+`McpGovernor` decorates an MCP client-like object and routes every `tools/call`
+through the gateway. Tool names are mapped to actions as `mcp:<toolName>`, so a
+policy scope can govern a single tool or all tools with `mcp:*`.
+
+```typescript
+import { McpGovernor, defaultMcpPolicy } from 'permiscope';
+
+const governor = new McpGovernor({
+  client: mcpClient,           // { listTools?, callTool }
+  policy: defaultMcpPolicy(),  // all tools require approval by default
+  principalId: 'agent-001',
+});
+
+const result = await governor.callTool('read_file', { path: 'config.json' });
+if (result.isError) console.error(result.content[0].text);
+```
+
+The default policy requires approval for every tool; override with specific scopes
+(`mcp:read_file`) or a broader wildcard (`mcp:*`). Results follow MCP's shape
+(`content`, `isError`) and include the decision and reason code. Governed calls are
+written to the audit chain like any other action.
+
+---
+
 ## Best Practices
 
 -   **Intercept Early**: Wrap tool definitions directly so the agent doesn't even "see" raw execution results for blocked actions.
