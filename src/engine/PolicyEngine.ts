@@ -15,6 +15,13 @@ export class PolicyEngine {
 
   constructor(policy: Policy) {
     this.policy = policy;
+    // Fail closed at construction time. A skipped block rule is worse than a
+    // policy that refuses to start, because the author believes it is active.
+    for (const scope of policy.scopes) {
+      for (const pattern of scope.blockedCommandPatterns ?? []) {
+        this.compilePattern(pattern);
+      }
+    }
   }
 
   async evaluate(action: Action): Promise<PermissionDecision> {
@@ -163,24 +170,39 @@ export class PolicyEngine {
 
     const normalized = parsed.argv.join(' ');
     for (const pattern of blockedPatterns) {
-      const regex = this.getPattern(pattern);
-      if (regex && regex.test(normalized)) return true;
+      if (this.getPattern(pattern).test(normalized)) return true;
     }
     return false;
   }
 
-  private getPattern(pattern: string): RegExp | null {
-    if (this.patternCache.has(pattern)) return this.patternCache.get(pattern) ?? null;
+  private compilePattern(pattern: string): RegExp {
+    const cached = this.patternCache.get(pattern);
+    if (cached) return cached;
 
-    // Compile once per policy instead of on every evaluation.
-    if (!safeRegex(pattern)) {
-      console.warn(`⚠️  Skipping unsafe regex pattern (potential ReDoS): ${pattern}`);
-      this.patternCache.set(pattern, null);
-      return null;
+    let safe = false;
+    try {
+      safe = safeRegex(pattern);
+    } catch {
+      safe = false;
+    }
+    // safe-regex is a heuristic: it accepts ambiguous alternations such as
+    // (a|a)*. Reject quantified groups containing alternation as well.
+    const ambiguousQuantifier = /\([^)]*\|[^)]*\)[*+{]/;
+    if (!safe || ambiguousQuantifier.test(pattern)) {
+      throw new Error(`Unsafe blocked-command pattern rejected (potential ReDoS): ${pattern}`);
     }
 
-    const regex = new RegExp(pattern, 'i');
+    let regex: RegExp;
+    try {
+      regex = new RegExp(pattern, 'i');
+    } catch {
+      throw new Error(`Invalid blocked-command pattern: ${pattern}`);
+    }
     this.patternCache.set(pattern, regex);
     return regex;
+  }
+
+  private getPattern(pattern: string): RegExp {
+    return this.compilePattern(pattern);
   }
 }

@@ -77,7 +77,8 @@ No scopes match → BLOCK (default deny)
 - Allowed commands are executed via `spawn()` with an **argv array and no shell**, with
   a timeout and output limit. `shell-quote` quoting is POSIX-only; on Windows the
   gateway uses argv directly and emulates the `echo` builtin.
-- **ReDoS protection**: unsafe regex patterns are skipped with a warning.
+- **ReDoS protection**: unsafe or invalid regex patterns are rejected when the
+  `PolicyEngine` is constructed, so a block rule can never silently be skipped.
 
 ### Dynamic predicates: `when` and `guard`
 

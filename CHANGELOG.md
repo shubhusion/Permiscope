@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strict logging blocks before execution: a signed INTENT record is written first and a linked RESULT record is appended afterwards (#63).
 - `ExecutionGateway.decide()` and `/v1/decide` now share principal verification, roles and budgets with execution (#64).
 - Explicit `when` (skip) and `guard` (deny) scope predicates replace fail-open validator misuse (#65).
+- Unsafe or invalid command regexes now fail closed at policy construction instead of being skipped (#66).
 - Audit head record is HMAC-signed and verified with the key ring (#27).
 - GitHub Pages demo blank page caused by a case-mismatched asset base path (#24).
 - High-severity dependency advisories patched (#29).
