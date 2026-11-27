@@ -15,6 +15,10 @@
     "serve": "ts-node src/cli/index.ts serve",
     "eval": "ts-node src/cli/index.ts eval",
     "eval:fixture": "ts-node src/scenarios/rogue_agent.ts",
+    "dev:web": "vite",
+    "build:web": "vite build",
+    "typecheck:web": "tsc -p web/tsconfig.json --noEmit",
+    "fixture:web": "ts-node scripts/generate-demo-fixture.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\""
@@ -65,6 +69,8 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
     "@types/proper-lockfile": "^4.1.4",
     "@types/safe-regex": "^1.1.6",
     "@typescript-eslint/eslint-plugin": "^8.74.0",
@@ -75,8 +81,11 @@
     "eslint-plugin-prettier": "^5.5.7",
     "jest": "^30.5.2",
     "prettier": "^3.10.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "ts-jest": "^29.4.15",
     "ts-node": "^10.9.2",
-    "typescript": "npm:@typescript/typescript6@6.0.2"
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "vite": "^8.4.0"
   }
 }

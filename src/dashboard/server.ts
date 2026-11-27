@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { ApprovalCache } from '../gateway/ApprovalCache';
+import { AuditLogger } from '../logging/AuditLogger';
 
 const app = express();
 const port = 3000;
@@ -28,9 +29,13 @@ app.use(
 );
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+const webDist = path.resolve(__dirname, '../../dist/web');
+const staticDir = fs.existsSync(webDist) ? webDist : path.join(__dirname, 'public');
+app.use(express.static(staticDir));
 
 const approvalCache = new ApprovalCache();
+const auditLogger = new AuditLogger();
 const logPath = './logs/audit.log';
 
 // Authentication middleware for API routes
@@ -50,6 +55,23 @@ const authMiddleware = (
   }
   next();
 };
+
+// API: Audit chain status (read-only, no auth required)
+app.get('/api/chain', (_req, res) => {
+  const result = auditLogger.verifyChain();
+  const entries = fs.existsSync(logPath)
+    ? fs
+        .readFileSync(logPath, 'utf-8')
+        .split('\n')
+        .filter((line) => line.trim() !== '').length
+    : 0;
+  res.json({
+    valid: result.valid,
+    errors: result.errors,
+    entries,
+    checks: ['sequence', 'hash links', 'head record', 'signatures', 'parse validity'],
+  });
+});
 
 // API: Get Logs (read-only, no auth required)
 app.get('/api/logs', (req, res) => {
@@ -107,6 +129,15 @@ app.post('/api/approvals/:id', authMiddleware, async (req, res) => {
 
   await approvalCache.updateStatus(id, status as 'APPROVED' | 'REJECTED');
   res.json({ success: true });
+});
+
+// SPA fallback for the built console. Hash routing means this is a convenience,
+// not a requirement, but it keeps deep links working on the local server.
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+  const index = path.join(staticDir, 'index.html');
+  if (fs.existsSync(index)) return res.sendFile(index);
+  next();
 });
 
 app.listen(port, () => {
