@@ -1,5 +1,6 @@
 import * as readline from 'readline';
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import { spawn } from 'child_process';
 import { Action, PermissionDecision } from '../core/types';
 import { parseCommand } from '../engine/commandPolicy';
@@ -157,6 +158,21 @@ export class ExecutionGateway {
       }
     }
 
+    // Bind the eventual result to the decision made here. The INTENT record is
+    // written before any side effect so strict logging can genuinely block it.
+    const intentHash = createHash('sha256')
+      .update(JSON.stringify({ action: governedAction, decision, principal: identity }))
+      .digest('hex');
+    await this.auditLogger.log({
+      timestamp: new Date().toISOString(),
+      agentId: identity,
+      action: governedAction,
+      decision,
+      phase: 'INTENT',
+      intentHash,
+      result: { planned: true },
+    });
+
     if (decision === 'ALLOW') {
       if (dryRun) {
         success = true;
@@ -199,9 +215,11 @@ export class ExecutionGateway {
     // leaves a lockfile handle open when a test or process exits.
     await this.auditLogger.log({
       timestamp: new Date().toISOString(),
-      agentId: governedAction.agentId,
+      agentId: identity,
       action: governedAction,
-      decision: decision,
+      decision,
+      phase: 'RESULT',
+      intentHash,
       result: { success, output, error, dryRun },
     });
 
