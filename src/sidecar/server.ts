@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { ExecutionGateway, GatewayOptions, ActionExecutor } from '../gateway/ExecutionGateway';
 import { Action, Policy } from '../core/types';
+import { withRequestContext } from '../core/requestContext';
 
 const ActionInputSchema = z.object({
   actionName: z.string().min(1),
@@ -39,14 +40,13 @@ function bearerToken(header: string | undefined): string | undefined {
   return header?.startsWith('Bearer ') ? header.slice(7) : undefined;
 }
 
-function toAction(input: ActionInput, principalId: string, token?: string): Action {
+function toAction(input: ActionInput, principalId: string): Action {
   return {
     actionName: input.actionName,
     parameters: input.parameters as Record<string, any>,
     agentId: principalId,
     reason: input.reason,
     timestamp: new Date(),
-    token,
   };
 }
 
@@ -92,8 +92,9 @@ export function createSidecar(options: SidecarOptions): {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     }
-    const decision = await engine.evaluate(
-      toAction(parsed.data, gatewayIdentity(options), bearerToken(req.headers.authorization)),
+    const token = bearerToken(req.headers.authorization);
+    const decision = await withRequestContext({ token }, () =>
+      engine.evaluate(toAction(parsed.data, gatewayIdentity(options))),
     );
     res.json({ decision });
   });
@@ -103,8 +104,9 @@ export function createSidecar(options: SidecarOptions): {
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     }
-    const result = await gateway.run(
-      toAction(parsed.data, gatewayIdentity(options), bearerToken(req.headers.authorization)),
+    const token = bearerToken(req.headers.authorization);
+    const result = await withRequestContext({ token }, () =>
+      gateway.run(toAction(parsed.data, gatewayIdentity(options))),
     );
     res.json(result);
   });

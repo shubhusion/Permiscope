@@ -8,7 +8,6 @@ export interface Action {
   reason?: string;
   timestamp: Date;
   roles?: string[];
-  token?: string;
 }
 
 export type PermissionDecision = 'ALLOW' | 'BLOCK' | 'REQUIRE_APPROVAL' | 'SHADOW_BLOCK';

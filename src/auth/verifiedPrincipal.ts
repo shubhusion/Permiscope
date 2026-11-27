@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual, verify as verifySignature } from 'crypto';
 import { PrincipalProvider } from '../gateway/ExecutionGateway';
+import { requestToken } from '../core/requestContext';
 
 export interface JwtVerifierOptions {
   secret?: string | Buffer;
@@ -24,8 +25,8 @@ export function verifiedPrincipalProvider(options: JwtVerifierOptions): Principa
   const roleClaim = options.roleClaim ?? 'roles';
   const tolerance = options.clockToleranceSeconds ?? 30;
 
-  return async (action) => {
-    const token = action.token;
+  return async (_action) => {
+    const token = requestToken();
     if (!token) throw new Error('Missing principal token');
 
     const parts = token.split('.');

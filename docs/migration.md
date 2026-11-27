@@ -13,6 +13,7 @@ v1.1.0 introduced deliberate fail-closed behavior changes. Review these before u
 | Command execution uses argv with no shell | Shell built-ins and `&&`/`|`/`$(...)` are no longer available. Use custom executors for shell-specific behavior. |
 | Node 24+ required | Upgrade CI and local Node. |
 | Rejections now expire | Do not rely on permanent rejections; re-approve when needed. |
+| Credentials are no longer an `Action` field | Remove `token` from constructed actions. Supply it via `withRequestContext({ token }, () => ...)` from `permiscope` (or rely on the sidecar, which does this for you). `verifiedPrincipalProvider` reads the token from context. |
 
 Additive APIs introduced after 1.1.0 (`evaluateDetailed`, budgets, postconditions,
 MCP governor, verified principals, policy builder, ESM build) do not require changes,

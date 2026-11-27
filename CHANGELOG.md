@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bearer tokens no longer enter the audit log: credentials move to `AsyncLocalStorage` request context, with recursive redaction as defence in depth (#62).
 - Audit head record is HMAC-signed and verified with the key ring (#27).
 - GitHub Pages demo blank page caused by a case-mismatched asset base path (#24).
 - High-severity dependency advisories patched (#29).
