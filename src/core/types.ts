@@ -25,6 +25,13 @@ export interface Policy {
   scopes: PermissionScope[];
 }
 
+export interface DecisionExplanation {
+  decision: PermissionDecision;
+  reasonCode: string;
+  matchedScope?: string;
+  remediation?: string;
+}
+
 export interface AuditLogEntry {
   timestamp: string;
   agentId: string;

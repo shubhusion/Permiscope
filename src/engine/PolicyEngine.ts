@@ -1,4 +1,10 @@
-import { Action, PermissionScope, Policy, PermissionDecision } from '../core/types';
+import {
+  Action,
+  PermissionScope,
+  Policy,
+  PermissionDecision,
+  DecisionExplanation,
+} from '../core/types';
 import * as path from 'path';
 import * as fs from 'fs';
 import safeRegex from 'safe-regex';
@@ -13,43 +19,62 @@ export class PolicyEngine {
   }
 
   async evaluate(action: Action): Promise<PermissionDecision> {
+    return (await this.evaluateDetailed(action)).decision;
+  }
+
+  /** Same decision as evaluate(), plus why it was made and how to proceed. */
+  async evaluateDetailed(action: Action): Promise<DecisionExplanation> {
     const matchingScopes = this.findMatchingScopes(action);
 
     if (matchingScopes.length === 0) {
-      // Default deny if no scope matches
-      return 'BLOCK';
+      return {
+        decision: 'BLOCK',
+        reasonCode: 'NO_MATCHING_SCOPE',
+        remediation: 'Add a policy scope for this action or use a custom executor.',
+      };
     }
 
-    // Priority: BLOCK > REQUIRE_APPROVAL > ALLOW
-    // If any scope says BLOCK (after guardrails), final is BLOCK.
-    // If any scope says REQUIRE_APPROVAL, final is REQUIRE_APPROVAL.
-    // Otherwise, ALLOW.
     let finalDecision: PermissionDecision = 'ALLOW';
     let applied = false;
 
     for (const scope of matchingScopes) {
       let scopeDecision = scope.decision;
+      let reasonCode: string | undefined;
 
       if (scopeDecision === 'ALLOW' || scopeDecision === 'REQUIRE_APPROVAL') {
-        const outcome = await this.checkGuardrails(action, scope);
-        if (outcome === 'block') {
+        const guard = await this.checkGuardrails(action, scope);
+        if (guard.outcome === 'block') {
           scopeDecision = 'BLOCK';
-        } else if (outcome === 'skip') {
-          // A validator returning false means this scope does not apply.
+          reasonCode = guard.reasonCode;
+        } else if (guard.outcome === 'skip') {
           continue;
         }
       }
 
       applied = true;
       if (scopeDecision === 'BLOCK') {
-        return 'BLOCK';
-      } else if (scopeDecision === 'REQUIRE_APPROVAL') {
-        finalDecision = 'REQUIRE_APPROVAL';
+        return {
+          decision: 'BLOCK',
+          reasonCode: reasonCode ?? 'SCOPE_BLOCK',
+          matchedScope: scope.actionName,
+          remediation: 'Change the action parameters or update the policy scope.',
+        };
       }
+      if (scopeDecision === 'REQUIRE_APPROVAL') finalDecision = 'REQUIRE_APPROVAL';
     }
 
-    // Every matching scope declined to apply — default deny.
-    return applied ? finalDecision : 'BLOCK';
+    if (!applied) {
+      return {
+        decision: 'BLOCK',
+        reasonCode: 'NO_APPLICABLE_SCOPE',
+        remediation: 'No matching scope accepted this action.',
+      };
+    }
+
+    return {
+      decision: finalDecision,
+      reasonCode: finalDecision === 'REQUIRE_APPROVAL' ? 'APPROVAL_REQUIRED' : 'ALLOWED',
+    };
   }
 
   private findMatchingScopes(action: Action): PermissionScope[] {
@@ -60,26 +85,29 @@ export class PolicyEngine {
   private async checkGuardrails(
     action: Action,
     scope: PermissionScope,
-  ): Promise<'pass' | 'block' | 'skip'> {
+  ): Promise<{ outcome: 'pass' | 'block' | 'skip'; reasonCode?: string }> {
     if (action.actionName === 'read_file' || action.actionName === 'write_file') {
-      if (!this.isValidPath(action.parameters.path, scope.allowedPaths)) return 'block';
+      if (!this.isValidPath(action.parameters.path, scope.allowedPaths)) {
+        return { outcome: 'block', reasonCode: 'GUARDRAIL_PATH' };
+      }
     }
 
     if (action.actionName === 'run_command') {
-      if (this.isBlockedCommand(action.parameters.command, scope.blockedCommandPatterns))
-        return 'block';
+      if (this.isBlockedCommand(action.parameters.command, scope.blockedCommandPatterns)) {
+        return { outcome: 'block', reasonCode: 'GUARDRAIL_COMMAND' };
+      }
     }
 
     if (scope.validator) {
       try {
-        if (!(await scope.validator(action))) return 'skip';
+        if (!(await scope.validator(action))) return { outcome: 'skip' };
       } catch (e) {
         console.error('Policy validator error:', e);
-        return 'block';
+        return { outcome: 'block', reasonCode: 'VALIDATOR_ERROR' };
       }
     }
 
-    return 'pass';
+    return { outcome: 'pass' };
   }
 
   private isValidPath(inputPath: string | undefined, allowedPaths: string[] | undefined): boolean {

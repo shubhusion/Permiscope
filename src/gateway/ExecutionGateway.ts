@@ -27,6 +27,9 @@ export interface GatewayResult {
   success: boolean;
   output?: any;
   error?: string;
+  reasonCode?: string;
+  matchedScope?: string;
+  remediation?: string;
 }
 
 export interface GatewayOptions {
@@ -87,7 +90,11 @@ export class ExecutionGateway {
       : { id: this.defaultPrincipalId };
     const governedAction: Action = { ...action, agentId: principal?.id || this.defaultPrincipalId };
 
-    let decision = await this.policyEngine.evaluate(governedAction);
+    const explanation = await this.policyEngine.evaluateDetailed(governedAction);
+    let decision = explanation.decision;
+    let reasonCode = explanation.reasonCode;
+    const matchedScope = explanation.matchedScope;
+    const remediation = explanation.remediation;
     let success = false;
     let output = null;
     let error = undefined;
@@ -102,6 +109,7 @@ export class ExecutionGateway {
         )
       ) {
         decision = 'ALLOW';
+        reasonCode = 'APPROVAL_GRANTED';
       } else if (dryRun) {
         // Report that approval would be needed without starting a wait.
       } else {
@@ -113,8 +121,10 @@ export class ExecutionGateway {
             governedAction.parameters,
           );
           decision = 'ALLOW';
+          reasonCode = 'APPROVAL_GRANTED';
         } else {
           decision = 'BLOCK';
+          reasonCode = 'APPROVAL_NOT_GRANTED';
         }
       }
     }
@@ -149,7 +159,7 @@ export class ExecutionGateway {
       result: { success, output, error, dryRun },
     });
 
-    return { decision, success, output, error };
+    return { decision, success, output, error, reasonCode, matchedScope, remediation };
   }
 
   private async requestApproval(action: Action, identity: string): Promise<boolean> {
