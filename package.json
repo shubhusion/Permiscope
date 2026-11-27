@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "test": "jest",
-    "audit:verify": "ts-node src/tests/unit/verify_chain.ts",
+    "audit:verify": "ts-node src/cli/index.ts verify",
     "demo": "node dist/cli/index.js --demo",
     "dev:dashboard": "ts-node src/dashboard/server.ts",
     "lint": "eslint src",

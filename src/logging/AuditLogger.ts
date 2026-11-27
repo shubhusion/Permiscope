@@ -4,25 +4,48 @@ import { createHash, createHmac } from 'crypto';
 import * as lockfile from 'proper-lockfile';
 import { AuditLogEntry } from '../core/types';
 
-// Environment variable for the audit secret (production use)
-const AUDIT_SECRET = process.env.PERMISCOPE_AUDIT_SECRET;
+const GENESIS = '0'.repeat(64);
 
-// Strict mode: if enabled, throw on log write failures instead of silent catch
-const STRICT_MODE = process.env.PERMISCOPE_STRICT_LOGGING === 'true';
+export interface AuditLoggerOptions {
+  secret?: string;
+  keyId?: string;
+  keyRing?: Record<string, string>;
+  logPath?: string;
+}
+
+function envKeyRing(): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(process.env.PERMISCOPE_AUDIT_KEY_RING || '{}');
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
 
 export class AuditLogger {
   private logPath: string;
-  private lastHash: string = '';
+  private headPath: string;
+  private lastHash = GENESIS;
   private secret: string | null;
   private strictMode: boolean;
+  private keyId: string;
+  private keyRing: Map<string, string>;
 
-  constructor(baseDir: string = './logs', strictMode: boolean = STRICT_MODE) {
+  constructor(
+    baseDir: string = './logs',
+    strictMode: boolean = process.env.PERMISCOPE_STRICT_LOGGING === 'true',
+    options: AuditLoggerOptions = {},
+  ) {
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
-    this.logPath = path.join(baseDir, 'audit.log');
-    this.secret = AUDIT_SECRET || null;
+    this.logPath = options.logPath ?? path.join(baseDir, 'audit.log');
+    this.headPath = `${this.logPath}.head`;
     this.strictMode = strictMode;
+    this.keyId = options.keyId ?? process.env.PERMISCOPE_AUDIT_KEY_ID ?? 'default';
+    this.keyRing = new Map(Object.entries(options.keyRing ?? envKeyRing()));
+    this.secret =
+      options.secret ?? this.keyRing.get(this.keyId) ?? process.env.PERMISCOPE_AUDIT_SECRET ?? null;
 
     if (!this.secret) {
       console.warn(
@@ -31,122 +54,161 @@ export class AuditLogger {
       );
     }
 
-    // Initialize lastHash from existing file
-    this.lastHash = '0000000000000000000000000000000000000000000000000000000000000000';
-
-    if (fs.existsSync(this.logPath)) {
-      try {
-        const content = fs.readFileSync(this.logPath, 'utf-8').trim();
-        if (content) {
-          const lines = content.split('\n');
-          const lastLine = lines[lines.length - 1];
-          // Recompute the hash of the last entry to continue the chain
-          this.lastHash = this.computeHash(lastLine);
-        }
-      } catch (e) {
-        console.error('Failed to recover audit chain:', e);
-      }
-    } else {
-      // Ensure file exists for locking
-      fs.writeFileSync(this.logPath, '');
-    }
+    if (!fs.existsSync(this.logPath)) fs.writeFileSync(this.logPath, '');
+    this.lastHash = this.recoverHead();
   }
 
   private computeHash(data: string): string {
-    if (this.secret) {
-      // Use HMAC-SHA256 for signed hashes (tamper-proof)
-      return createHmac('sha256', this.secret).update(data).digest('hex');
-    } else {
-      // Fall back to plain SHA256 (development mode)
-      return createHash('sha256').update(data).digest('hex');
+    // The chain uses plain SHA-256 so rotating the HMAC key does not invalidate
+    // previously written links. Authenticity comes from the per-entry signature.
+    return createHash('sha256').update(data).digest('hex');
+  }
+
+  private secretFor(keyId?: string): string | null {
+    const id = keyId ?? 'default';
+    if (this.keyRing.has(id)) return this.keyRing.get(id) ?? null;
+    if (id === this.keyId) return this.secret;
+    return null;
+  }
+
+  private sign(entry: AuditLogEntry): string {
+    const secret = this.secretFor(this.keyId);
+    if (!secret) throw new Error('Cannot sign an audit entry without a secret');
+    const unsigned: AuditLogEntry = { ...entry };
+    delete unsigned.signature;
+    return createHmac('sha256', secret).update(JSON.stringify(unsigned)).digest('hex');
+  }
+
+  private readLines(): string[] {
+    try {
+      return fs
+        .readFileSync(this.logPath, 'utf-8')
+        .split('\n')
+        .filter((line) => line.trim() !== '');
+    } catch {
+      return [];
     }
   }
 
-  async log(entry: Omit<AuditLogEntry, 'previousHash' | 'signature'>) {
-    let release: (() => Promise<void>) | null = null;
-
+  private recoverHead(): string {
     try {
-      // Acquire lock for atomic append
+      const head: unknown = JSON.parse(fs.readFileSync(this.headPath, 'utf-8'));
+      if (
+        head &&
+        typeof head === 'object' &&
+        typeof (head as { hash?: unknown }).hash === 'string'
+      ) {
+        return (head as { hash: string }).hash;
+      }
+    } catch {
+      // Legacy log without a head record; fall back to hashing the last line.
+    }
+    const lines = this.readLines();
+    return lines.length ? this.computeHash(lines[lines.length - 1]) : GENESIS;
+  }
+
+  async log(
+    entry: Omit<AuditLogEntry, 'previousHash' | 'signature' | 'sequence' | 'keyId'>,
+  ): Promise<void> {
+    let release: (() => Promise<void>) | undefined;
+    try {
       release = await lockfile.lock(this.logPath, { retries: 3 });
+      const lines = this.readLines();
+      this.lastHash = lines.length ? this.computeHash(lines[lines.length - 1]) : GENESIS;
 
-      // Re-read last hash in case another process appended
-      const content = fs.readFileSync(this.logPath, 'utf-8').trim();
-      if (content) {
-        const lines = content.split('\n');
-        const lastLine = lines[lines.length - 1];
-        this.lastHash = this.computeHash(lastLine);
+      let sequence = lines.length + 1;
+      if (lines.length) {
+        try {
+          const last: AuditLogEntry = JSON.parse(lines[lines.length - 1]);
+          if (typeof last.sequence === 'number') sequence = last.sequence + 1;
+        } catch {
+          // An unparsable last line cannot provide a sequence; use line count.
+        }
       }
 
-      const fullEntry: AuditLogEntry & { signature?: string } = {
-        ...entry,
-        previousHash: this.lastHash,
-      };
-
-      // Add signature if secret is available
+      const full: AuditLogEntry = { ...entry, sequence, previousHash: this.lastHash };
       if (this.secret) {
-        const entryString = JSON.stringify(fullEntry);
-        fullEntry.signature = createHmac('sha256', this.secret).update(entryString).digest('hex');
+        full.keyId = this.keyId;
+        full.signature = this.sign(full);
       }
 
-      const entryWithHashForNext = JSON.stringify(fullEntry);
-      this.lastHash = this.computeHash(entryWithHashForNext);
-
-      fs.appendFileSync(this.logPath, entryWithHashForNext + '\n');
-    } catch (e) {
-      console.error('Failed to write audit log:', e);
-      // In strict mode, throw to ensure actions are not executed without logging
+      const line = JSON.stringify(full);
+      this.lastHash = this.computeHash(line);
+      fs.appendFileSync(this.logPath, line + '\n');
+      // Written under the same lock as the append: the head detects tail truncation.
+      fs.writeFileSync(this.headPath, JSON.stringify({ sequence, hash: this.lastHash }));
+    } catch (error) {
+      console.error('Failed to write audit log:', error);
       if (this.strictMode) {
-        throw new Error(
-          `Audit log write failed: ${e}. Action execution blocked due to strict logging mode.`,
-        );
+        throw new Error(`Audit log write failed: ${error}. Action blocked by strict logging mode.`);
       }
     } finally {
       if (release) await release();
     }
   }
 
-  // Verify the integrity of the audit log
   verifyChain(): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
+    const lines = this.readLines();
 
-    if (!fs.existsSync(this.logPath)) {
-      return { valid: true, errors: [] }; // No log yet is valid
+    if (!fs.existsSync(this.logPath)) return { valid: true, errors: [] };
+    if (lines.length && !fs.existsSync(this.headPath)) {
+      errors.push('Head record missing: tail truncation cannot be detected');
     }
 
-    const content = fs.readFileSync(this.logPath, 'utf-8').trim();
-    if (!content) {
-      return { valid: true, errors: [] };
-    }
-
-    const lines = content.split('\n');
-    let expectedPreviousHash = '0000000000000000000000000000000000000000000000000000000000000000';
+    let expectedHash = GENESIS;
+    let expectedSequence = 1;
 
     for (let i = 0; i < lines.length; i++) {
+      let entry: AuditLogEntry;
       try {
-        const entry = JSON.parse(lines[i]);
+        entry = JSON.parse(lines[i]) as AuditLogEntry;
+      } catch (error) {
+        errors.push(`Line ${i + 1}: parse error - ${error}`);
+        continue;
+      }
 
-        // Verify chain link
-        if (entry.previousHash !== expectedPreviousHash) {
+      // Legacy entries predate sequence numbers; the missing head record below
+      // already reports that their integrity cannot be fully proven.
+      if (entry.sequence !== undefined && entry.sequence !== expectedSequence) {
+        errors.push(
+          `Line ${i + 1}: sequence ${String(entry.sequence)} expected ${expectedSequence} (gap or truncation)`,
+        );
+      }
+      if (entry.previousHash !== expectedHash) {
+        errors.push(`Line ${i + 1}: hash chain broken`);
+      }
+
+      if (entry.signature) {
+        const secret = this.secretFor(entry.keyId);
+        if (!secret) {
+          errors.push(`Line ${i + 1}: no signing key for keyId ${String(entry.keyId)}`);
+        } else {
+          const { signature, ...unsigned } = entry;
+          const expected = createHmac('sha256', secret)
+            .update(JSON.stringify(unsigned))
+            .digest('hex');
+          if (signature !== expected) errors.push(`Line ${i + 1}: invalid signature`);
+        }
+      }
+
+      expectedHash = this.computeHash(lines[i]);
+      expectedSequence += 1;
+    }
+
+    if (fs.existsSync(this.headPath)) {
+      try {
+        const head: unknown = JSON.parse(fs.readFileSync(this.headPath, 'utf-8'));
+        if (!head || typeof head !== 'object') throw new Error('malformed head record');
+        const record = head as { sequence?: unknown; hash?: unknown };
+        if (record.sequence !== lines.length) {
           errors.push(
-            `Line ${i + 1}: Hash chain broken. Expected ${expectedPreviousHash}, got ${entry.previousHash}`,
+            `Tail truncated: head says ${String(record.sequence)} entries, log has ${lines.length}`,
           );
         }
-
-        // Verify signature if present and secret is available
-        if (this.secret && entry.signature) {
-          const { signature, ...entryWithoutSig } = entry;
-          const expectedSig = createHmac('sha256', this.secret)
-            .update(JSON.stringify(entryWithoutSig))
-            .digest('hex');
-          if (signature !== expectedSig) {
-            errors.push(`Line ${i + 1}: Invalid signature. Entry may have been tampered with.`);
-          }
-        }
-
-        // Compute hash for next entry
-        expectedPreviousHash = this.computeHash(lines[i]);
-      } catch (e) {
-        errors.push(`Line ${i + 1}: Parse error - ${e}`);
+        if (record.hash !== expectedHash) errors.push('Head hash does not match the log');
+      } catch (error) {
+        errors.push(`Head record unreadable: ${error}`);
       }
     }
 

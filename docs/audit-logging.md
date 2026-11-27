@@ -37,48 +37,65 @@ Each line is a JSON object representing one entry.
     "dryRun": false
   },
   "previousHash": "a1b2c3d4...",
-  "signature": "e5f6g7h8..."
+  "signature": "e5f6g7h8...",
+  "sequence": 42,
+  "keyId": "v1"
 }
 ```
 
 ## Hash Chaining
 
-Each entry includes `previousHash` — the hash of the preceding entry.
+Each entry includes `previousHash` — the SHA-256 hash of the preceding entry — and a
+monotonically increasing `sequence`. The hash itself is unkeyed so that rotating the
+HMAC signing key does not invalidate old links; authenticity comes from the signature.
 
 ```
-Entry 1: hash(entry1) = H1
-Entry 2: previousHash = H1, hash(entry2) = H2
-Entry 3: previousHash = H2, hash(entry3) = H3
+Entry 1: sequence=1, previousHash=0...0, hash(entry1) = H1
+Entry 2: sequence=2, previousHash=H1,    hash(entry2) = H2
 ```
 
-This creates an immutable chain. Modifying any entry breaks the chain.
+A companion `audit.log.head` file records the last sequence and hash. It is written
+under the same lock as the append, so deleting the tail of the log is detected.
+Modifying any entry breaks the chain.
 
 ## HMAC Signing
 
 When `PERMISCOPE_AUDIT_SECRET` is set:
 
-- Entries are signed with HMAC-SHA256
+- Entries are signed with HMAC-SHA256 and carry a `keyId`
 - `signature` field contains the MAC
-- Verification requires the same secret
+- Verification looks up the secret by `keyId`, so keys can rotate without
+  invalidating history: set `PERMISCOPE_AUDIT_KEY_ID` to the new ID and provide
+  `PERMISCOPE_AUDIT_KEY_RING` (JSON mapping of key ID → secret) containing both old and new keys
 
-Without the secret, plain SHA-256 is used (development mode).
+Without a secret, entries are unsigned (development mode).
 
 ## Integrity Verification
 
-```typescript
-const logger = new AuditLogger('./logs');
-const result = logger.verifyChain();
+```bash
+npm run audit:verify                 # verifies ./logs/audit.log
+npx permiscope verify ./logs/audit.log
+```
 
-if (!result.valid) {
-  console.error('Tampered entries:', result.errors);
-}
+Exit code is `0` when the chain is valid and `1` otherwise.
+
+```typescript
+const logger = new AuditLogger('./logs', false, {
+  keyRing: { v1: 'old-secret', v2: 'new-secret' },
+});
+const result = logger.verifyChain();
 ```
 
 ### Verification Checks
 
-1. **Chain integrity** — Each `previousHash` matches computed hash
-2. **Signature validity** — HMAC matches (if secret set)
-3. **Parse validity** — All entries are valid JSON
+1. **Sequence continuity** — each entry's `sequence` is the expected number
+2. **Chain integrity** — each `previousHash` matches the computed hash
+3. **Head agreement** — the last sequence and hash match `audit.log.head` (detects tail truncation)
+4. **Signature validity** — HMAC matches using the key named by `keyId`
+5. **Parse validity** — all entries are valid JSON
+
+Legacy logs without sequence numbers or a head file are reported as unverifiable
+rather than silently trusted.
 
 ## Genesis Block
 

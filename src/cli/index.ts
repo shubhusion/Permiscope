@@ -1,5 +1,7 @@
 #!/usr/bin/env node
+import * as path from 'path';
 import { createAgent } from '../index';
+import { AuditLogger } from '../logging/AuditLogger';
 
 async function runDemo() {
   // Import dynamically or just move logic here to avoid circularity if index.ts exports createAgent
@@ -44,10 +46,27 @@ async function main() {
     process.exit(0);
   }
 
+  if (args[0] === 'verify') {
+    const logPath = path.resolve(args[1] || './logs/audit.log');
+    const logger = new AuditLogger(path.dirname(logPath), false, { logPath });
+    const result = logger.verifyChain();
+    if (result.valid) {
+      console.log(`✅ Audit chain valid: ${logPath}`);
+    } else {
+      console.error(`❌ Audit chain invalid: ${logPath}`);
+      for (const error of result.errors.slice(0, 10)) console.error(`  - ${error}`);
+      if (result.errors.length > 10) {
+        console.error(`  ... and ${result.errors.length - 10} more error(s)`);
+      }
+    }
+    process.exit(result.valid ? 0 : 1);
+  }
+
   if (args.length === 0) {
     console.log('Usage: permiscope <command> [args...]');
     console.log('Example: permiscope run_command "echo hello"');
     console.log('         permiscope read_file "C:/Safe/data.txt"');
+    console.log('         permiscope verify [audit.log]');
     console.log('         permiscope --demo');
     process.exit(1);
   }
