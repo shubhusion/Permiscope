@@ -52,7 +52,7 @@ CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 - `npm audit --audit-level=high` (high/critical advisories block; moderate dev-toolchain
   advisories are tracked but do not block — see note below)
 - `npm run build`
-- `npm test` (coverage thresholds enforced)
+- `npm test` (coverage thresholds: 70% statements, 65% branches, 72% functions, 72% lines)
 - `npm run lint`
 - `npm run eval` (36-case adversarial corpus)
 - `npm run typecheck:web` and `npm run build:web`
@@ -60,6 +60,10 @@ CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 Development needs Node 24+ for the TypeScript toolchain; the published library supports
 Node 20 and newer. Node 18 and 20 are not tested. `npm run audit:verify` and
 `npm run fixture:web` are available locally; add them to CI before calling them gates.
+
+Coverage excludes the CLI, package barrel, dashboard glue and scenario scripts;
+those are exercised through smoke tests and are not unit-testable in isolation.
+Do not add them back to the threshold denominator without adding tests.
 
 Dependency policy: `npm audit fix` is applied when non-breaking. Remaining moderate
 advisories are in the Jest 30 dev toolchain (`glob`/`minimatch`) and only clear by
