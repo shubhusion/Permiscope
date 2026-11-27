@@ -8,6 +8,9 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:esm": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.mjs --packages=external",
+    "check:package": "node -e \"require('./dist/index.js')\" && node --input-type=module -e \"import('./dist/index.mjs').then(() => console.log('esm ok'))\"",
+    "prepublishOnly": "npm run build && npm run build:esm && npm test && npm run check:package",
     "test": "jest",
     "audit:verify": "ts-node src/cli/index.ts verify",
     "demo": "node dist/cli/index.js --demo",
@@ -57,8 +60,14 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
@@ -87,6 +96,7 @@
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.9",
     "eslint-plugin-prettier": "^5.5.7",
+    "esbuild": "^0.28.2",
     "jest": "^30.5.2",
     "prettier": "^3.10.1",
     "react": "^19.3.1",

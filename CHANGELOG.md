@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-principal budgets with call/spend caps and `BUDGET_EXCEEDED` reason code (#43).
 - Post-condition checks with `POSTCONDITION_FAILED` audit outcomes (#44).
 - Verified JWT principals with role-gated policy scopes and sidecar token forwarding (#45).
+- Dual CommonJS/ESM package build with `check:package` and `prepublishOnly` (#46).
 - Browser/pages smoke check in the deploy workflow (#24).
 
 ### Changed
