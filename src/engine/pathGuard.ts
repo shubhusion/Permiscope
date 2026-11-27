@@ -49,12 +49,12 @@ export function resolveGuardedPath(
   const absolute = path.resolve(inputPath);
   let target: string;
   try {
-    target = fs.realpathSync.native(absolute);
+    target = fs.realpathSync(absolute);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       return { ok: false, reason: 'Path cannot be resolved' };
     }
-    const realParent = fs.realpathSync.native(path.dirname(absolute));
+    const realParent = fs.realpathSync(path.dirname(absolute));
     const candidate = path.join(realParent, path.basename(absolute));
     // A symlink as the final component would redirect the write after open.
     try {
