@@ -35,8 +35,10 @@ Guardrails are deliberately conservative:
 ## Single Machine Only
 
 - Approval storage is a local JSON file with `proper-lockfile`; no distributed coordination.
-- The audit log is a single file with an in-memory chain head; verification loads the
-  whole file. There is no rotation or streaming verification.
+- **Main scalability limit:** the audit log is a single file with an in-memory chain
+  head; `verifyChain()` loads the whole file. There is no built-in rotation or streaming
+  verification. Rotate externally with `logrotate` (see [audit-logging.md](./audit-logging.md))
+  and archive previous segments before restarting verification from a fresh head.
 - The dashboard is single-instance.
 
 For multi-machine deployments, use a shared database for approvals, centralized log
@@ -58,10 +60,10 @@ redacted by default; `?raw=1` exposes them to administrators.
 
 | Limitation | Notes |
 |---|---|
-| Regex performance | Unsafe patterns are skipped with a warning |
-| No wildcards in action names | Must match exactly |
+| Regex performance | Unsafe/invalid patterns are rejected at policy construction |
+| Wildcards | Suffix wildcards such as `mcp:*` work; other names match exactly |
 | No inheritance | Each scope is independent |
-| Exact action names only | Custom executors can bridge edge cases |
+| Grouping | Use `roles` or a `when` predicate for conditions |
 
 ## Dashboard and Sidecar
 
@@ -70,7 +72,8 @@ redacted by default; `?raw=1` exposes them to administrators.
 | No HTTPS in the bundled server | Put it behind a reverse proxy |
 | Localhost by default | CORS restricts browser origins; it is not authentication |
 | No user management | Single bearer token |
-| Sidecar has one static token | No per-principal tokens, rate limiting or replay protection |
+| Sidecar has one static token | No per-principal tokens or rate limiting. Replay protection is opt-in via `Idempotency-Key` |
+| Python SDK is stdlib-only | No chain verification, approval management, async or retries yet |
 | Sidecar binds loopback unless explicitly allowed | Use `allowRemote: true` only behind TLS |
 
 The public demo is read-only and fixture-backed; it never calls a live approval API.
