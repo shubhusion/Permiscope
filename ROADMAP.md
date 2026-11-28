@@ -1,6 +1,6 @@
 # Roadmap
 
-**Status:** v1.1.0, v1.2.0 and v2.0.0 released · v2.1.0 work unreleased on `main` · alpha
+**Status:** v1.1.0, v1.2.0, v2.0.0 and v2.1.0 released · alpha
 [![CI](https://github.com/shubhusion/Permiscope/actions/workflows/ci.yml/badge.svg)](https://github.com/shubhusion/Permiscope/actions/workflows/ci.yml)
 **[Live demo →](https://shubhusion.github.io/Permiscope/)** ·
 [Eval corpus](./eval/cases.json) · [Security policy](./SECURITY.md) ·
@@ -74,7 +74,7 @@ This is a breaking release; see the [migration guide](./docs/migration.md#1x--20
 | #123 | Native Claude Code PreToolUse hook ([ADR-0021](./docs/adr/0021-native-claude-hook.md)) |
 | #125 | Single-use approvals with pending expiry ([ADR-0022](./docs/adr/0022-single-use-approvals.md)) |
 
-## Merged after v2.0.0 — targets v2.1.0
+## Shipped in v2.1.0
 
 | Issue | Delivered |
 |---|---|
