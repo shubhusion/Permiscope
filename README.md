@@ -318,6 +318,8 @@ See the [`/docs`](./docs) folder for detailed guides:
 - [End-to-end validation](./docs/e2e.md) — Live process checks and manual checklist
 - [Performance](./docs/performance.md) — Bench script and measured overhead
 - [Migration guide](./docs/migration.md) — Upgrading and compatibility policy
+- [Release procedure](./docs/releases.md) — Branching, tagging and publishing
+- [Architecture decisions](./docs/adr/README.md) — Why the design is the way it is
 - [Roadmap](./ROADMAP.md) — Shipped work and what comes next
 - [Security policy](./SECURITY.md) — Supported versions and private reporting
 

@@ -28,3 +28,4 @@ description. If a material decision has no ADR, add one in the same PR. See
 | [0015](./0015-fixture-backed-demo.md) | One console, two data sources, read-only demo | Accepted |
 | [0016](./0016-trusted-publishing.md) | npm Trusted Publishing with provenance | Accepted |
 | [0017](./0017-segmented-audit-log.md) | Segmented audit log and streaming verification | Accepted |
+| [0018](./0018-branching-and-release-model.md) | GitHub Flow with explicit tag discipline | Accepted |

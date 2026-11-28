@@ -114,6 +114,9 @@ response and PR description; add one in the same PR for any new material decisio
 
 ## Release process
 
+See [docs/releases.md](./docs/releases.md) for the step-by-step procedure and tag rules
+([ADR-0018](./docs/adr/0018-branching-and-release-model.md)).
+
 ![Release pipeline](./docs/assets/release-workflow.svg)
 
 1. Confirm `main` is green and all milestone issues are closed.
