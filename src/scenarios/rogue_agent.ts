@@ -43,6 +43,7 @@ export async function generateRogueFixture(outputPath: string = OUTPUT): Promise
       isRejected: async () => false,
       requestApproval: async () => undefined,
       approve: async () => true,
+      consumeApproval: async () => true,
     } as unknown as ApprovalCache;
 
     // Shadow mode is a host setting, not an action flag. Use two gateways that

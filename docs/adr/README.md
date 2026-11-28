@@ -32,3 +32,4 @@ description. If a material decision has no ADR, add one in the same PR. See
 | [0019](./0019-default-command-allowlist.md) | Default command allowlist | Accepted |
 | [0020](./0020-fail-closed-host-defaults.md) | Fail-closed dashboard and sidecar defaults | Accepted |
 | [0021](./0021-native-claude-hook.md) | Native Claude Code hook decision adapter | Accepted |
+| [0022](./0022-single-use-approvals.md) | Single-use approvals with pending expiry | Accepted |

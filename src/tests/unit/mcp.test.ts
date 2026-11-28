@@ -10,6 +10,7 @@ const stubCache = {
   isRejected: async () => false,
   requestApproval: async () => undefined,
   approve: async () => true,
+  consumeApproval: async () => true,
 } as unknown as ApprovalCache;
 
 function client(calls: string[]): McpClientLike {

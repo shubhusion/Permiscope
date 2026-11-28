@@ -72,6 +72,7 @@ These are on `main` but not yet released.
 | #119 | Project landing page at the site root |
 | #121 | Refreshed contributor and security onboarding |
 | #123 | Native Claude Code PreToolUse hook ([ADR-0021](./docs/adr/0021-native-claude-hook.md)) |
+| #125 | Single-use approvals with pending expiry ([ADR-0022](./docs/adr/0022-single-use-approvals.md)) |
 
 ## Next
 
