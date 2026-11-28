@@ -130,16 +130,39 @@ Action execution blocked due to strict logging mode.
 
 This ensures no action proceeds without an audit record.
 
-## Log Rotation
+## Log Rotation and Segments
 
-Currently, log rotation must be handled externally (e.g., `logrotate`). When rotating:
+Opt into segmented storage (see [ADR-0017](./adr/0017-segmented-audit-log.md)):
 
-1. Stop the application
-2. Archive `audit.log`
-3. Start fresh (chain begins from genesis)
+```typescript
+const logger = new AuditLogger('./logs', false, {
+  secret: process.env.PERMISCOPE_AUDIT_SECRET,
+  segmented: true,
+  maxSegmentEntries: 1000,
+});
+```
 
-> [!WARNING]
-> Breaking the file resets the chain. Archive before deleting.
+Entries are written to `<dir>/audit/segment-NNNNNN.log` with a signed head per segment and
+a signed `manifest.json` naming the active segment. Rotation happens under the same lock
+as the append. `firstHash` of each segment anchors to the previous segment's `lastHash`,
+so the chain stays continuous. Sequence numbers remain global.
+
+Verify either layout:
+
+```bash
+permiscope verify ./logs/audit.log        # legacy single file
+permiscope verify ./logs/audit            # segment directory
+```
+
+Migrate an existing verified log once:
+
+```bash
+permiscope audit migrate ./logs/audit.log ./logs/audit
+```
+
+Migration copies the entries into `segment-000001`, signs its head and the manifest, and
+leaves the original file untouched. A corrupt segment or manifest fails verification
+rather than being skipped.
 
 ## Best Practices
 

@@ -37,10 +37,10 @@ Guardrails are deliberately conservative:
 - Approval storage is a local JSON file with `proper-lockfile`; no distributed coordination.
   Budgets can now be shared across processes on one machine with `FileBudgetStore`, but
   cross-host sharing still needs a custom `BudgetStore` (e.g. Redis or a database).
-- **Main scalability limit:** the audit log is a single file with an in-memory chain
-  head; `verifyChain()` loads the whole file. There is no built-in rotation or streaming
-  verification. Rotate externally with `logrotate` (see [audit-logging.md](./audit-logging.md))
-  and archive previous segments before restarting verification from a fresh head.
+- Segmentation (see [ADR-0017](./adr/0017-segmented-audit-log.md)) bounds verification
+  memory through streamed reads and rotates under the audit lock. It is opt-in: the
+  default remains a single `audit.log`. Segments are files on one machine, so
+  multi-host audit still needs external collection.
 - The dashboard is single-instance.
 
 For multi-machine deployments, use a shared database for approvals, centralized log

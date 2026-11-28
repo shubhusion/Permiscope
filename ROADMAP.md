@@ -47,7 +47,7 @@ Ideas, not commitments. Open an issue before starting any of them. Budgets,
 postconditions, MCP governance and verified JWT principals are already shipped —
 see the tables above.
 
-- Log rotation and streaming chain verification for large logs (the main scalability limit).
+- Multi-host audit collection and streaming verification across archived segments; same-machine segmentation is shipped ([ADR-0017](./docs/adr/0017-segmented-audit-log.md)).
 - Distributed approval storage and role-based approvals.
 - Resource limits and timeouts for all built-in executors, not just shell commands.
 - Cross-host budget stores (Redis/Postgres) using the `BudgetStore` interface; a file-backed store for same-machine processes is already shipped.

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import * as path from 'path';
+import * as fs from 'fs';
 import { createAgent } from '../index';
 import { AuditLogger } from '../logging/AuditLogger';
 import { defaultPolicy } from '../defaults/defaultPolicy';
@@ -73,14 +74,36 @@ async function main() {
     process.exit(result.failed === 0 ? 0 : 1);
   }
 
+  if (args[0] === 'audit' && args[1] === 'migrate') {
+    const source = path.resolve(args[2] || './logs/audit.log');
+    const target = path.resolve(args[3] || './logs/audit');
+    try {
+      const { migrateLegacyAudit } = await import('../logging/migrateAudit');
+      const result = migrateLegacyAudit(source, target);
+      console.log(`✅ Migrated ${result.entries} entries to ${result.segmentDir}`);
+    } catch (error: any) {
+      console.error(`❌ Migration failed: ${error.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
   if (args[0] === 'verify') {
-    const logPath = path.resolve(args[1] || './logs/audit.log');
-    const logger = new AuditLogger(path.dirname(logPath), false, { logPath });
+    const target = path.resolve(args[1] || './logs/audit.log');
+    const isDirectory = fs.existsSync(target) && fs.statSync(target).isDirectory();
+    const segmented = isDirectory || path.basename(target) === 'manifest.json';
+    const logger = new AuditLogger(path.dirname(target), false, {
+      segmented,
+      ...(segmented
+        ? { logDir: isDirectory ? target : path.dirname(target) }
+        : { logPath: target }),
+    });
+    const label = isDirectory ? path.join(target, 'manifest.json') : target;
     const result = logger.verifyChain();
     if (result.valid) {
-      console.log(`✅ Audit chain valid: ${logPath}`);
+      console.log(`✅ Audit chain valid: ${label}`);
     } else {
-      console.error(`❌ Audit chain invalid: ${logPath}`);
+      console.error(`❌ Audit chain invalid: ${label}`);
       for (const error of result.errors.slice(0, 10)) console.error(`  - ${error}`);
       if (result.errors.length > 10) {
         console.error(`  ... and ${result.errors.length - 10} more error(s)`);
@@ -94,7 +117,8 @@ async function main() {
     console.log('Example: permiscope run_command "echo hello"');
     console.log('         permiscope read_file "C:/Safe/data.txt"');
     console.log('         permiscope eval [cases.json]');
-    console.log('         permiscope verify [audit.log]');
+    console.log('         permiscope verify [audit.log|segment-dir|manifest.json]');
+    console.log('         permiscope audit migrate [audit.log] [segment-dir]');
     console.log('         permiscope serve  (needs PERMISCOPE_SIDECAR_TOKEN)');
     console.log('         permiscope --demo');
     process.exit(1);

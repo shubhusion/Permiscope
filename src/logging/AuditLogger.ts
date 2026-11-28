@@ -35,6 +35,30 @@ export interface AuditLoggerOptions {
   logPath?: string;
   /** Result fields whose values may be logged. Defaults to none: output and error are redacted. */
   allowedOutputKeys?: string[];
+  /** Opt-in segmented storage (see ADR-0017). Legacy single file remains the default. */
+  segmented?: boolean;
+  /** Directory for segments; defaults to <baseDir>/audit. */
+  logDir?: string;
+  maxSegmentEntries?: number;
+  maxSegmentBytes?: number;
+}
+
+export interface SegmentHead {
+  firstSequence: number;
+  lastSequence: number;
+  firstHash: string;
+  lastHash: string;
+  keyId?: string;
+  signature?: string;
+}
+
+export interface AuditManifest {
+  version: 1;
+  activeSegment: number;
+  lastSequence: number;
+  lastHash: string;
+  keyId?: string;
+  signature?: string;
 }
 
 /** Logs only metadata about an execution unless the host opts into specific result fields. */
@@ -70,6 +94,18 @@ function envKeyRing(): Record<string, string> {
   }
 }
 
+/** Atomic replace via a sibling temp file; a crash cannot leave a half-written record. */
+export function writeAtomic(filePath: string, value: unknown): void {
+  const temporary = `${filePath}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(value, null, 2));
+  fs.renameSync(temporary, filePath);
+}
+
+export function segmentPaths(directory: string, number: number): { log: string; head: string } {
+  const name = `segment-${String(number).padStart(6, '0')}`;
+  return { log: path.join(directory, `${name}.log`), head: path.join(directory, `${name}.head`) };
+}
+
 export class AuditLogger {
   private logPath: string;
   private headPath: string;
@@ -79,15 +115,18 @@ export class AuditLogger {
   private keyId: string;
   private keyRing: Map<string, string>;
   private allowedOutputKeys: Set<string>;
+  private segmented: boolean;
+  private segmentDir: string;
+  private manifestPath: string;
+  private maxSegmentEntries: number;
+  private maxSegmentBytes: number;
 
   constructor(
     baseDir: string = './logs',
     strictMode: boolean = process.env.PERMISCOPE_STRICT_LOGGING === 'true',
     options: AuditLoggerOptions = {},
   ) {
-    if (!fs.existsSync(baseDir)) {
-      fs.mkdirSync(baseDir, { recursive: true });
-    }
+    if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
     this.logPath = options.logPath ?? path.join(baseDir, 'audit.log');
     this.headPath = `${this.logPath}.head`;
     this.strictMode = strictMode;
@@ -96,6 +135,11 @@ export class AuditLogger {
     this.allowedOutputKeys = new Set(options.allowedOutputKeys ?? []);
     this.secret =
       options.secret ?? this.keyRing.get(this.keyId) ?? process.env.PERMISCOPE_AUDIT_SECRET ?? null;
+    this.segmented = options.segmented ?? false;
+    this.segmentDir = options.logDir ?? path.join(baseDir, 'audit');
+    this.manifestPath = path.join(this.segmentDir, 'manifest.json');
+    this.maxSegmentEntries = options.maxSegmentEntries ?? 1000;
+    this.maxSegmentBytes = options.maxSegmentBytes ?? 5 * 1024 * 1024;
 
     if (!this.secret) {
       console.warn(
@@ -104,8 +148,16 @@ export class AuditLogger {
       );
     }
 
-    if (!fs.existsSync(this.logPath)) fs.writeFileSync(this.logPath, '');
-    this.lastHash = this.recoverHead();
+    if (this.segmented) {
+      if (!fs.existsSync(this.segmentDir)) fs.mkdirSync(this.segmentDir, { recursive: true });
+      if (!fs.existsSync(this.manifestPath)) {
+        writeAtomic(this.manifestPath, this.newManifest(1, 0, GENESIS));
+      }
+      this.lastHash = this.readManifest().lastHash;
+    } else {
+      if (!fs.existsSync(this.logPath)) fs.writeFileSync(this.logPath, '');
+      this.lastHash = this.recoverHead();
+    }
   }
 
   private computeHash(data: string): string {
@@ -129,9 +181,38 @@ export class AuditLogger {
     return createHmac('sha256', secret).update(JSON.stringify(unsigned)).digest('hex');
   }
 
+  private signRecord(record: Record<string, unknown>): string | undefined {
+    const secret = this.secretFor(this.keyId);
+    if (!secret) return undefined;
+    const unsigned = { ...record } as Record<string, unknown>;
+    delete unsigned.signature;
+    return createHmac('sha256', secret).update(JSON.stringify(unsigned)).digest('hex');
+  }
+
   private signHead(sequence: number, hash: string): string | undefined {
     if (!this.secret) return undefined;
     return createHmac('sha256', this.secret).update(`${sequence}:${hash}`).digest('hex');
+  }
+
+  private newManifest(
+    activeSegment: number,
+    lastSequence: number,
+    lastHash: string,
+  ): AuditManifest {
+    const manifest: AuditManifest = {
+      version: 1,
+      activeSegment,
+      lastSequence,
+      lastHash,
+      keyId: this.secret ? this.keyId : undefined,
+    };
+    const signature = this.signRecord(manifest as unknown as Record<string, unknown>);
+    if (signature) manifest.signature = signature;
+    return manifest;
+  }
+
+  private readManifest(): AuditManifest {
+    return JSON.parse(fs.readFileSync(this.manifestPath, 'utf-8')) as AuditManifest;
   }
 
   private readLines(): string[] {
@@ -162,50 +243,27 @@ export class AuditLogger {
     return lines.length ? this.computeHash(lines[lines.length - 1]) : GENESIS;
   }
 
+  private safeEntry(
+    entry: Omit<AuditLogEntry, 'previousHash' | 'signature' | 'sequence' | 'keyId'>,
+  ): any {
+    // Defence in depth: credentials never belong on the domain object, but if
+    // one slips into a parameter or result, scrub it before it hits the log.
+    const safe = redactSensitive(entry);
+    if (safe.result !== undefined) safe.result = redactResult(safe.result, this.allowedOutputKeys);
+    return safe;
+  }
+
   async log(
     entry: Omit<AuditLogEntry, 'previousHash' | 'signature' | 'sequence' | 'keyId'>,
   ): Promise<void> {
+    const safe = this.safeEntry(entry);
     let release: (() => Promise<void>) | undefined;
     try {
-      release = await lockfile.lock(this.logPath, { retries: 3 });
-      const lines = this.readLines();
-      this.lastHash = lines.length ? this.computeHash(lines[lines.length - 1]) : GENESIS;
-
-      let sequence = lines.length + 1;
-      if (lines.length) {
-        try {
-          const last: AuditLogEntry = JSON.parse(lines[lines.length - 1]);
-          if (typeof last.sequence === 'number') sequence = last.sequence + 1;
-        } catch {
-          // An unparsable last line cannot provide a sequence; use line count.
-        }
-      }
-
-      // Defence in depth: credentials never belong on the domain object, but if
-      // one slips into a parameter or result, scrub it before it hits the log.
-      const safeEntry = redactSensitive(entry);
-      if (safeEntry.result !== undefined) {
-        safeEntry.result = redactResult(safeEntry.result, this.allowedOutputKeys);
-      }
-      const full: AuditLogEntry = { ...safeEntry, sequence, previousHash: this.lastHash };
-      if (this.secret) {
-        full.keyId = this.keyId;
-        full.signature = this.sign(full);
-      }
-
-      const line = JSON.stringify(full);
-      this.lastHash = this.computeHash(line);
-      fs.appendFileSync(this.logPath, line + '\n');
-      // Written under the same lock as the append: the head detects tail truncation.
-      fs.writeFileSync(
-        this.headPath,
-        JSON.stringify({
-          sequence,
-          hash: this.lastHash,
-          keyId: this.secret ? this.keyId : undefined,
-          signature: this.signHead(sequence, this.lastHash),
-        }),
-      );
+      release = await lockfile.lock(this.segmented ? this.manifestPath : this.logPath, {
+        retries: 5,
+      });
+      if (this.segmented) await this.logSegmented(safe);
+      else await this.logLegacy(safe);
     } catch (error) {
       console.error('Failed to write audit log:', error);
       if (this.strictMode) {
@@ -220,9 +278,110 @@ export class AuditLogger {
     }
   }
 
-  /** Streams the log in bounded chunks; multi-byte characters survive chunk borders. */
-  private forEachLine(visit: (line: string) => void): number {
-    const descriptor = fs.openSync(this.logPath, 'r');
+  private async logLegacy(safe: any): Promise<void> {
+    const lines = this.readLines();
+    this.lastHash = lines.length ? this.computeHash(lines[lines.length - 1]) : GENESIS;
+
+    let sequence = lines.length + 1;
+    if (lines.length) {
+      try {
+        const last: AuditLogEntry = JSON.parse(lines[lines.length - 1]);
+        if (typeof last.sequence === 'number') sequence = last.sequence + 1;
+      } catch {
+        // An unparsable last line cannot provide a sequence; use line count.
+      }
+    }
+
+    const full: AuditLogEntry = { ...safe, sequence, previousHash: this.lastHash };
+    if (this.secret) {
+      full.keyId = this.keyId;
+      full.signature = this.sign(full);
+    }
+
+    const line = JSON.stringify(full);
+    this.lastHash = this.computeHash(line);
+    fs.appendFileSync(this.logPath, line + '\n');
+    // Written under the same lock as the append: the head detects tail truncation.
+    fs.writeFileSync(
+      this.headPath,
+      JSON.stringify({
+        sequence,
+        hash: this.lastHash,
+        keyId: this.secret ? this.keyId : undefined,
+        signature: this.signHead(sequence, this.lastHash),
+      }),
+    );
+  }
+
+  private async logSegmented(safe: any): Promise<void> {
+    const manifest = this.readManifest();
+    let number = manifest.activeSegment;
+    let paths = segmentPaths(this.segmentDir, number);
+    let head = fs.existsSync(paths.head)
+      ? (JSON.parse(fs.readFileSync(paths.head, 'utf-8')) as SegmentHead)
+      : undefined;
+    const count = head ? head.lastSequence - head.firstSequence + 1 : 0;
+    const size = fs.existsSync(paths.log) ? fs.statSync(paths.log).size : 0;
+
+    if (
+      fs.existsSync(paths.log) &&
+      (count >= this.maxSegmentEntries || size >= this.maxSegmentBytes)
+    ) {
+      number += 1;
+      paths = segmentPaths(this.segmentDir, number);
+      const first: SegmentHead = {
+        firstSequence: manifest.lastSequence + 1,
+        lastSequence: manifest.lastSequence,
+        firstHash: manifest.lastHash,
+        lastHash: manifest.lastHash,
+        keyId: this.secret ? this.keyId : undefined,
+      };
+      this.applyRecordSignature(first as unknown as Record<string, unknown>);
+      writeAtomic(paths.head, first);
+      head = first;
+    }
+
+    const sequence = manifest.lastSequence + 1;
+    const full: AuditLogEntry = { ...safe, sequence, previousHash: manifest.lastHash };
+    if (this.secret) {
+      full.keyId = this.keyId;
+      full.signature = this.sign(full);
+    }
+    const line = JSON.stringify(full);
+    fs.appendFileSync(paths.log, line + '\n');
+    this.lastHash = this.computeHash(line);
+
+    if (!head) {
+      head = {
+        firstSequence: sequence,
+        lastSequence: sequence - 1,
+        firstHash: manifest.lastHash,
+        lastHash: manifest.lastHash,
+        keyId: this.secret ? this.keyId : undefined,
+      };
+    }
+    const updatedHead: SegmentHead = {
+      ...head,
+      lastSequence: sequence,
+      lastHash: this.lastHash,
+      keyId: this.secret ? this.keyId : undefined,
+    };
+    this.applyRecordSignature(updatedHead as unknown as Record<string, unknown>);
+    writeAtomic(paths.head, updatedHead);
+
+    const updatedManifest = this.newManifest(number, sequence, this.lastHash);
+    writeAtomic(this.manifestPath, updatedManifest);
+  }
+
+  private applyRecordSignature(record: Record<string, unknown>): void {
+    const signature = this.signRecord(record);
+    if (signature) record.signature = signature;
+    else delete record.signature;
+  }
+
+  /** Streams a log file in bounded chunks; multi-byte characters survive chunk borders. */
+  private forEachLine(filePath: string, visit: (line: string) => void): number {
+    const descriptor = fs.openSync(filePath, 'r');
     const decoder = new StringDecoder('utf8');
     const buffer = Buffer.allocUnsafe(64 * 1024);
     let remainder = '';
@@ -277,24 +436,44 @@ export class AuditLogger {
         `Line ${lineNumber}: sequence ${String(entry.sequence)} expected ${expectedSequence} (gap or truncation)`,
       );
     }
-    if (entry.previousHash !== expectedHash) {
-      errors.push(`Line ${lineNumber}: hash chain broken`);
-    }
+    if (entry.previousHash !== expectedHash) errors.push(`Line ${lineNumber}: hash chain broken`);
 
     if (entry.signature) {
-      const secret = this.secretFor(entry.keyId);
-      if (!secret) {
-        errors.push(`Line ${lineNumber}: no signing key for keyId ${String(entry.keyId)}`);
-      } else {
-        const { signature, ...unsigned } = entry;
-        const expected = createHmac('sha256', secret)
-          .update(JSON.stringify(unsigned))
-          .digest('hex');
-        if (signature !== expected) errors.push(`Line ${lineNumber}: invalid signature`);
-      }
+      this.verifySignature(entry, lineNumber, errors);
     }
 
     return { hash, sequence };
+  }
+
+  private verifySignature(
+    record: { keyId?: string; signature?: string },
+    label: string | number,
+    errors: string[],
+  ): void {
+    const secret = this.secretFor(record.keyId);
+    if (!secret) {
+      errors.push(`${label}: no signing key for keyId ${String(record.keyId)}`);
+      return;
+    }
+    const { signature, ...unsigned } = record as Record<string, unknown> & { signature?: string };
+    const expected = createHmac('sha256', secret).update(JSON.stringify(unsigned)).digest('hex');
+    if (signature !== expected) errors.push(`${label}: invalid signature`);
+  }
+
+  private verifyRecord(
+    record: Record<string, unknown> | null,
+    label: string,
+    errors: string[],
+  ): void {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      errors.push(`${label}: unreadable record`);
+      return;
+    }
+    if (typeof record.signature === 'string') {
+      this.verifySignature(record as { keyId?: string; signature?: string }, label, errors);
+    } else if (this.secret) {
+      errors.push(`${label}: unsigned record`);
+    }
   }
 
   private verifyHead(lineCount: number, expectedHash: string, errors: string[]): void {
@@ -314,7 +493,6 @@ export class AuditLogger {
           );
         }
         if (record.hash !== expectedHash) errors.push('Head hash does not match the log');
-
         if (typeof record.signature === 'string') {
           const key = this.secretFor(typeof record.keyId === 'string' ? record.keyId : undefined);
           if (!key) {
@@ -334,14 +512,86 @@ export class AuditLogger {
     }
   }
 
+  private verifySegmented(errors: string[]): void {
+    if (!fs.existsSync(this.manifestPath)) {
+      errors.push('Segment manifest missing');
+      return;
+    }
+    let manifest: AuditManifest;
+    try {
+      manifest = this.readManifest();
+    } catch (error) {
+      errors.push(`Segment manifest unreadable: ${error}`);
+      return;
+    }
+    this.verifyRecord(manifest as unknown as Record<string, unknown>, 'Segment manifest', errors);
+
+    let expectedHash = GENESIS;
+    let expectedSequence = 1;
+    for (let number = 1; number <= manifest.activeSegment; number += 1) {
+      const paths = segmentPaths(this.segmentDir, number);
+      if (!fs.existsSync(paths.log) || !fs.existsSync(paths.head)) {
+        errors.push(`Segment ${number} missing`);
+        return;
+      }
+      let head: SegmentHead;
+      try {
+        head = JSON.parse(fs.readFileSync(paths.head, 'utf-8')) as SegmentHead;
+      } catch (error) {
+        errors.push(`Segment ${number} head unreadable: ${error}`);
+        return;
+      }
+      this.verifyRecord(
+        head as unknown as Record<string, unknown>,
+        `Segment ${number} head`,
+        errors,
+      );
+      if (head.firstHash !== expectedHash) {
+        errors.push(`Segment ${number}: firstHash does not anchor the previous segment`);
+      }
+      if (head.firstSequence !== expectedSequence) {
+        errors.push(
+          `Segment ${number}: firstSequence ${String(head.firstSequence)} expected ${expectedSequence}`,
+        );
+      }
+
+      let lastHash = GENESIS;
+      this.forEachLine(paths.log, (line) => {
+        const verified = this.verifyEntry(
+          line,
+          expectedSequence,
+          expectedHash,
+          expectedSequence,
+          errors,
+        );
+        expectedHash = verified.hash;
+        expectedSequence = verified.sequence;
+        lastHash = verified.hash;
+      });
+      if (head.lastHash !== lastHash) {
+        errors.push(`Segment ${number}: head hash does not match its entries`);
+      }
+    }
+
+    if (manifest.lastHash !== expectedHash) errors.push('Manifest hash does not match the log');
+    if (manifest.lastSequence !== expectedSequence - 1) {
+      errors.push('Manifest sequence does not match the log');
+    }
+  }
+
   verifyChain(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    if (this.segmented) {
+      this.verifySegmented(errors);
+      return { valid: errors.length === 0, errors };
+    }
     if (!fs.existsSync(this.logPath)) return { valid: true, errors: [] };
 
     let expectedHash = GENESIS;
     let expectedSequence = 1;
     const entryErrors: string[] = [];
     let lineNumber = 0;
-    const lineCount = this.forEachLine((line) => {
+    const lineCount = this.forEachLine(this.logPath, (line) => {
       lineNumber += 1;
       const verified = this.verifyEntry(
         line,
@@ -354,13 +604,36 @@ export class AuditLogger {
       expectedSequence = verified.sequence;
     });
 
-    const errors: string[] = [];
     if (lineCount && !fs.existsSync(this.headPath)) {
       errors.push('Head record missing: tail truncation cannot be detected');
     }
     errors.push(...entryErrors);
     if (fs.existsSync(this.headPath)) this.verifyHead(lineCount, expectedHash, errors);
-
     return { valid: errors.length === 0, errors };
+  }
+
+  /** Parsed entries for both layouts; used by the dashboard API. */
+  readEntries(): AuditLogEntry[] {
+    const entries: AuditLogEntry[] = [];
+    const collect = (filePath: string): void => {
+      this.forEachLine(filePath, (line) => {
+        try {
+          entries.push(JSON.parse(line) as AuditLogEntry);
+        } catch {
+          // Invalid lines are reported by verifyChain; skip them here.
+        }
+      });
+    };
+    if (this.segmented) {
+      if (!fs.existsSync(this.manifestPath)) return entries;
+      const active = this.readManifest().activeSegment;
+      for (let number = 1; number <= active; number += 1) {
+        const paths = segmentPaths(this.segmentDir, number);
+        if (fs.existsSync(paths.log)) collect(paths.log);
+      }
+    } else if (fs.existsSync(this.logPath)) {
+      collect(this.logPath);
+    }
+    return entries;
   }
 }
