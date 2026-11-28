@@ -91,7 +91,7 @@ function Nav({ tab, select }: { tab: Tab; select: (tab: Tab) => void }) {
         </button>
       ))}
       <div className="sidebar-foot">
-        Permiscope v1.1.0
+        Permiscope
         <br />
         Cooperative governance, not a sandbox.
       </div>

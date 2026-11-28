@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tailored bug/feature issue templates, an issue-template config, and a first-contribution path in `CONTRIBUTING.md`; refreshed PR checklist, security policy and README contributor links (#121).
 - A project landing page at the site root with live eval/chain figures, quick start and links to the repository, npm package and docs. The console moves to `#/console/*`; older hashes keep working (#119).
 
 ### Security
@@ -128,5 +129,6 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
   catch it. (#19)
 - GitHub Pages demo blank page caused by a case-mismatched asset base path. (#24)
 
-[Unreleased]: https://github.com/shubhusion/Permiscope/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/shubhusion/Permiscope/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/shubhusion/Permiscope/releases/tag/v1.2.0
 [1.1.0]: https://github.com/shubhusion/Permiscope/releases/tag/v1.1.0

@@ -1,6 +1,6 @@
 # Limitations
 
-This document describes known limitations and design tradeoffs in Permiscope v1.1.0.
+This document describes known limitations and design tradeoffs in Permiscope 1.x.
 
 ## Not a Sandbox
 

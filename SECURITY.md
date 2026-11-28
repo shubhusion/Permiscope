@@ -4,13 +4,16 @@
 
 | Version | Supported |
 |---|---|
-| 1.1.x | ✅ |
-| 1.0.x | ⚠️ Best-effort security fixes |
+| 1.2.x | ✅ Current release line |
+| 1.1.x | ⚠️ Best-effort, no published backports |
+| 1.0.x | ❌ |
 | < 1.0 | ❌ |
 
-Security fixes are applied to the latest minor first; older supported minors receive
-fixes at maintainer discretion. See [migration](./docs/migration.md) for the
-compatibility policy.
+Security fixes are applied to the latest released minor first. Under
+[ADR-0018](./docs/adr/0018-branching-and-release-model.md), patching an older minor
+requires changing this support policy *before* cutting a `hotfix/vX.Y.Z` branch. Until
+then older minors receive fixes at maintainer discretion. See
+[migration](./docs/migration.md) for the compatibility policy.
 
 ## Reporting a vulnerability
 
@@ -25,10 +28,12 @@ regression test exists. We will credit reporters who consent.
 ## What Permiscope protects
 
 - Accidental or careless agent actions through policy mediation and approvals
-- Command injection in governed `run_command` calls (AST tokenization + argv execution)
+- Command injection in governed `run_command` calls (AST tokenization, executable
+  allowlist, argv execution)
 - Path traversal and symlink escape via realpath containment
 - Approval spoofing via authenticated principals
 - Audit tampering and tail truncation via signed, sequenced entries with a head anchor
+- Missing host credentials: the dashboard and sidecar fail closed ([ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md))
 
 ## What Permiscope does **not** protect
 

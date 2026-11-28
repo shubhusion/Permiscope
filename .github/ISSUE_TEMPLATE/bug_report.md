@@ -1,32 +1,53 @@
 ---
-name: Bug Report
-about: Create a report to help us improve
-title: "[BUG] "
+name: Bug report
+about: Report incorrect policy decisions, crashes, or documentation drift
+title: '[BUG] '
 labels: bug
 assignees: ''
-
 ---
 
-## Bug Description
-A clear and concise description of what the bug is.
+## What happened
 
-## Reproduction Steps
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+Describe the incorrect behavior in one or two sentences.
 
-## Expected Behavior
-A clear and concise description of what you expected to happen.
+## Minimal reproduction
 
-## Screenshots (if applicable)
-If applicable, add screenshots to help explain your problem.
+Provide the smallest policy and action that reproduce it. For policy bugs, a snippet
+like this is ideal:
+
+```ts
+const engine = new PolicyEngine({ scopes: [/* ... */] });
+await engine.evaluate({
+  actionName: 'run_command',
+  parameters: { command: '...' },
+  agentId: 'repro',
+  timestamp: new Date(),
+});
+```
+
+For HTTP/dashboard bugs, include the request, headers and response status.
+
+## Expected vs actual
+
+| | Result |
+|---|---|
+| Expected decision / response | |
+| Actual decision / response | |
+| `reasonCode` (if available) | |
 
 ## Environment
-- OS: [e.g. Windows, macOS, Linux]
-- Version: [e.g. 1.0.1]
-- Node.js Version: [e.g. 18.x]
 
-## Additional Context
-Add any other context about the problem here.
+- Permiscope version: (e.g. 1.2.0)
+- Node.js version: 24.x or 26.x
+- OS: Windows / macOS / Linux
+- Integration: library / sidecar / dashboard / MCP / Python SDK
+
+## Security impact
+
+Does this allow an action that policy should deny? If yes, **do not post a public
+reproduction** — use private vulnerability reporting per `SECURITY.md` and link only a
+redacted description here.
+
+## Additional context
+
+Logs, screenshots, or related issues. Remove credentials and bearer tokens.

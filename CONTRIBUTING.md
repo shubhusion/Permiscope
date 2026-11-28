@@ -7,9 +7,22 @@ core, so we keep a deliberately tight change process. Please read
 ## Before you start
 
 - Open or claim an **issue** first. Every change traces back to one.
-- For security vulnerabilities, **do not open a public issue** — contact the maintainer
-  privately (a `SECURITY.md` policy and private reporting are being added in v1.1.0).
+- For security vulnerabilities, **do not open a public issue** — use GitHub's private
+  vulnerability reporting as described in [SECURITY.md](./SECURITY.md).
 - By contributing you agree to follow our [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+### Finding a first issue
+
+Look for issues labelled `good first issue` or `docs`. Good starting points include:
+
+- adding an adversarial case to `eval/cases.json` with a regression test,
+- improving a `docs/` page or a README example so it matches shipped behavior,
+- tightening a unit test around policy decisions, path containment or approval TTLs,
+- reproducing a bug on Node 24 and 26 and adding a deterministic regression test.
+
+Comment on the issue to claim it before opening a branch. Small PRs are reviewed first.
+Architectural changes need an ADR in `docs/adr/`; see [ADR-0018](./docs/adr/0018-branching-and-release-model.md)
+for the branch and release rules.
 
 ## Development setup
 
@@ -24,8 +37,24 @@ npm run build
 npm test
 ```
 
-Also run `npm run lint` and `npm run audit:verify` where available; both are being
-repaired as part of the v1.1.0 toolchain work.
+Before opening a PR, run the same gates CI runs:
+
+```bash
+npm run lint
+npm run build
+npm test
+npm run eval
+npm run typecheck:web
+npm run build:web
+npm run build:esm
+npm run check:package
+npm run e2e
+npm run smoke:package
+npm audit --audit-level=moderate
+```
+
+`npm run audit:verify` verifies `./logs/audit.log` locally. Report results in the PR
+body rather than saying "tests pass" — separate automated checks from manual review.
 
 ## The rules for every change
 

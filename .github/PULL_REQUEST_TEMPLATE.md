@@ -11,11 +11,24 @@ Link any related issues here (e.g., Fixes #123).
 - [ ] Documentation update
 - [ ] Refactoring / Technical Debt
 
-## How Has This Been Tested?
-Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce.
+## Architecture decision
 
-- [ ] Unit tests (`npm test`)
-- [ ] Manual verification (please describe)
+Name the ADR this follows, or state that no ADR applies. Material decisions need a new
+ADR in `docs/adr/` in the same PR.
+
+## How Has This Been Tested?
+Report each gate you actually ran with its result; separate automated checks from manual
+inspection. Do not claim a check that was not run.
+
+- [ ] `npm run lint`
+- [ ] `npm run build`
+- [ ] `npm test`
+- [ ] `npm run eval`
+- [ ] `npm run typecheck:web` / `npm run build:web`
+- [ ] `npm run build:esm` / `npm run check:package`
+- [ ] `npm run e2e` / `npm run smoke:package`
+- [ ] `npm audit --audit-level=moderate`
+- [ ] Manual verification (describe how to repeat it)
 
 ## Checklist
 - [ ] My code follows the style guidelines of this project
