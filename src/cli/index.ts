@@ -91,6 +91,20 @@ async function main() {
     return;
   }
 
+  if (args[0] === 'hook' && args[1] === 'cursor') {
+    const { runCursorHook } = await import('../hooks/cursor');
+    const raw = fs.readFileSync(0, 'utf-8');
+    const output = await runCursorHook(raw);
+    if (output) process.stdout.write(`${JSON.stringify(output)}\n`);
+    return;
+  }
+
+  if (args[0] === 'hook' && args[1]) {
+    console.error(`❌ Unsupported hook host: ${args[1]}`);
+    process.exit(2);
+    return;
+  }
+
   if (args[0] === 'hook') {
     const { runHook } = await import('../hooks/claude');
     const raw = fs.readFileSync(0, 'utf-8');
@@ -154,7 +168,9 @@ async function main() {
     console.log('Example: permiscope run_command "echo hello"');
     console.log('         permiscope read_file "C:/Safe/data.txt"');
     console.log('         permiscope eval [cases.json]');
-    console.log('         permiscope hook  (reads Claude Code hook JSON on stdin)');
+    console.log(
+      '         permiscope hook [cursor]  (reads hook JSON on stdin; default: Claude Code)',
+    );
     console.log('         permiscope verify [audit.log|segment-dir|manifest.json]');
     console.log('         permiscope audit migrate [audit.log] [segment-dir]');
     console.log('         permiscope serve  (needs PERMISCOPE_SIDECAR_TOKEN)');
