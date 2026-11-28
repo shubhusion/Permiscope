@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation and security model
+    url: https://github.com/shubhusion/Permiscope#readme
+    about: Read the README, docs/ and architecture decisions before opening an issue.
+  - name: Security vulnerability (private)
+    url: https://github.com/shubhusion/Permiscope/security/advisories/new
+    about: Report guardrail bypasses, approval spoofing or audit forgery privately. Do not open a public issue.
+  - name: Contributing rules
+    url: https://github.com/shubhusion/Permiscope/blob/main/CONTRIBUTING.md
+    about: Branch naming, verification gates and review expectations.

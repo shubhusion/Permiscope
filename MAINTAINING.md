@@ -89,8 +89,7 @@ runtime, so the gate blocks high/critical only. Recheck before any Jest major ch
 
 ## Security vulnerabilities
 
-- `SECURITY.md` and GitHub private vulnerability reporting are part of the v1.1.0
-  release work; until they exist, contact the maintainer privately via GitHub.
+- Use GitHub private vulnerability reporting as described in `SECURITY.md`.
 - Never open a public issue for an unpatched vulnerability.
 - Critical issues (guardrail bypass, approval spoofing, audit forgery) get a patch
   release as soon as a regression test exists.

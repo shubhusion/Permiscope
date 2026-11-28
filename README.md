@@ -334,14 +334,21 @@ See the [`/docs`](./docs) folder for detailed guides:
 
 ## 🤝 Contributing
 
-We welcome community contributions! Permiscope uses structured templates for **Bug Reports**, **Feature Requests**, and **Pull Requests**.
+We welcome community contributions! Start with a
+[good first issue](https://github.com/shubhusion/Permiscope/labels/good%20first%20issue),
+or read the [first-contribution path](CONTRIBUTING.md#finding-a-first-issue).
 
 1. Open or claim an issue before starting work.
-2. Fork the repository and create a branch for that issue.
-3. Follow the [Contributing Guidelines](CONTRIBUTING.md) and [Maintainer Rules](MAINTAINING.md).
-4. Open a PR with our standardized template and link the issue with `Closes #N`.
+2. Fork the repository and branch as `<type>/<issue>-<slug>` from current `main`.
+3. Run the [verification gates](CONTRIBUTING.md#development-setup) and follow the
+   [Contributing Guidelines](CONTRIBUTING.md) and [Maintainer Rules](MAINTAINING.md).
+4. Open a PR with our template, name the ADR it follows (or say none applies), and link
+   the issue with `Closes #N`.
 
-Everyone participating is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Security flaws must be reported privately through
+[GitHub vulnerability reporting](https://github.com/shubhusion/Permiscope/security/advisories/new),
+not in a public issue. Everyone participating is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 📄 License
 

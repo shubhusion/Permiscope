@@ -1,20 +1,44 @@
 ---
-name: Feature Request
-about: Suggest an idea for Permiscope
-title: "[FEATURE] "
+name: Feature request
+about: Propose a new guardrail, integration, or developer experience change
+title: '[FEATURE] '
 labels: enhancement
 assignees: ''
-
 ---
 
-## Problem Description
-Is your feature request related to a problem? Please describe. (e.g. I'm always frustrated when [...])
+## Problem
 
-## Proposed Solution
-A clear and concise description of what you want to happen.
+What real agent workflow is currently unsafe, awkward, or impossible? Describe the
+use case rather than the implementation.
 
-## Alternatives Considered
-A clear and concise description of any alternative solutions or features you've considered.
+## Who needs it
 
-## Additional Context
-Add any other context or screenshots about the feature request here.
+- Integration: library / sidecar / dashboard / MCP / Python SDK
+- Deployment: local development / single machine service / team deployment
+- Is this a security boundary change? (yes/no)
+
+## Proposed behavior
+
+Describe the decision or API you want. For policy features, show the intended scope:
+
+```ts
+{
+  actionName: 'run_command',
+  decision: 'ALLOW',
+  allowedCommands: ['git status'],
+}
+```
+
+## Security boundary review
+
+- Does this widen or narrow what an agent can do?
+- What is the fail-closed behavior when configuration is missing or invalid?
+- Which existing ADR does it extend or supersede?
+
+## Alternatives considered
+
+Include approaches you rejected and why.
+
+## Acceptance criteria
+
+List the regression tests, docs and ADR changes that would make this issue done.
