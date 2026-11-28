@@ -33,3 +33,4 @@ description. If a material decision has no ADR, add one in the same PR. See
 | [0020](./0020-fail-closed-host-defaults.md) | Fail-closed dashboard and sidecar defaults | Accepted |
 | [0021](./0021-native-claude-hook.md) | Native Claude Code hook decision adapter | Accepted |
 | [0022](./0022-single-use-approvals.md) | Single-use approvals with pending expiry | Accepted |
+| [0023](./0023-shared-hook-evaluator.md) | Shared evaluator for native hook adapters | Accepted |

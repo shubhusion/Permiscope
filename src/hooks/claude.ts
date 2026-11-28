@@ -1,6 +1,6 @@
 import { Action, Policy } from '../core/types';
 import { defaultPolicy } from '../defaults/defaultPolicy';
-import { PolicyEngine } from '../engine/PolicyEngine';
+import { evaluateHookAction, malformedVerdict, unmappedVerdict } from './evaluate';
 
 export interface ClaudeHookInput {
   hookEventName?: string;
@@ -81,33 +81,23 @@ export async function runHook(
   try {
     input = JSON.parse(raw) as ClaudeHookInput;
   } catch {
-    return decision('deny', 'Permiscope could not parse hook input; failing closed');
+    const verdict = malformedVerdict('Permiscope could not parse hook input; failing closed');
+    return decision(verdict.decision, verdict.reason);
   }
   if (!input || typeof input !== 'object') {
-    return decision('deny', 'Permiscope received a non-object hook payload; failing closed');
+    const verdict = malformedVerdict(
+      'Permiscope received a non-object hook payload; failing closed',
+    );
+    return decision(verdict.decision, verdict.reason);
   }
   if (input.hookEventName === 'PostToolUse') return null;
 
   const action = mapHookAction(input, now);
   if (!action) {
-    return decision('ask', 'Permiscope does not map this tool; confirm the tool call manually');
+    const verdict = unmappedVerdict();
+    return decision(verdict.decision, verdict.reason);
   }
 
-  try {
-    const result = await new PolicyEngine(policy).evaluateDetailed(action);
-    switch (result.decision) {
-      case 'ALLOW':
-        return decision('allow', `Permiscope allowed: ${result.reasonCode}`);
-      case 'REQUIRE_APPROVAL':
-        return decision('ask', `Permiscope requires approval: ${result.reasonCode}`);
-      case 'BLOCK':
-      case 'SHADOW_BLOCK':
-        return decision('deny', `Permiscope blocked: ${result.reasonCode}`);
-      default:
-        return decision('deny', 'Permiscope received an unknown policy decision; failing closed');
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return decision('deny', `Permiscope policy evaluation failed; failing closed: ${message}`);
-  }
+  const verdict = await evaluateHookAction(action, policy);
+  return decision(verdict.decision, verdict.reason);
 }
