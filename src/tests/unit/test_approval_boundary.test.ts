@@ -74,8 +74,18 @@ describe('approval boundary', () => {
     const [request] = await cache.getAll();
     await cache.updateStatus(request.id, 'REJECTED');
 
+    // Set the expiry in the persisted record instead of sleeping: a 60 ms
+    // wall-clock wait is flaky on loaded CI runners, and the cache reloads
+    // from disk on every read.
+    const setExpiry = (expiresAt: string): void => {
+      const file = path.join(base, 'approvals.json');
+      const records = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      records[0].expiresAt = expiresAt;
+      fs.writeFileSync(file, JSON.stringify(records, null, 2));
+    };
+    setExpiry(new Date(Date.now() + 60_000).toISOString());
     expect(await cache.isRejected('alice', 'sensitive', { x: 1 })).toBe(true);
-    await new Promise((resolve) => setTimeout(resolve, 90));
+    setExpiry(new Date(Date.now() - 1_000).toISOString());
     expect(await cache.isRejected('alice', 'sensitive', { x: 1 })).toBe(false);
   });
 
