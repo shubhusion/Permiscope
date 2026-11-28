@@ -112,6 +112,10 @@ never executes or waits for approval, and a `REQUIRE_APPROVAL` decision is repor
 A decide call still records one budget attempt so policies cannot be probed for free,
 but it does not consume an execution — only actions that actually run do.
 
+To share budgets across sidecar processes on the same machine, pass a `FileBudgetStore`
+as `budgetStore` (and configure `gatewayOptions.budget`). Cross-host deployments can
+supply any `BudgetStore` implementation with atomic `compareAndSet`.
+
 Python clients need no third-party packages — see [python/README.md](../python/README.md).
 Non-loopback binding is refused unless the sidecar is created programmatically with
 `allowRemote: true`, and should only be done behind TLS with a strong token.

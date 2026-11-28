@@ -50,7 +50,7 @@ see the tables above.
 - Log rotation and streaming chain verification for large logs (the main scalability limit).
 - Distributed approval storage and role-based approvals.
 - Resource limits and timeouts for all built-in executors, not just shell commands.
-- Shared budget-store implementations (Redis/Postgres) using the new `BudgetStore` interface.
+- Cross-host budget stores (Redis/Postgres) using the `BudgetStore` interface; a file-backed store for same-machine processes is already shipped.
 - Per-principal sidecar tokens, rate limiting and TLS for remote deployments.
 - Python SDK follow-up module: chain verification, approval management, async and retries.
 

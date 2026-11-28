@@ -35,6 +35,8 @@ Guardrails are deliberately conservative:
 ## Single Machine Only
 
 - Approval storage is a local JSON file with `proper-lockfile`; no distributed coordination.
+  Budgets can now be shared across processes on one machine with `FileBudgetStore`, but
+  cross-host sharing still needs a custom `BudgetStore` (e.g. Redis or a database).
 - **Main scalability limit:** the audit log is a single file with an in-memory chain
   head; `verifyChain()` loads the whole file. There is no built-in rotation or streaming
   verification. Rotate externally with `logrotate` (see [audit-logging.md](./audit-logging.md))

@@ -8,7 +8,7 @@ import { resolveGuardedPath } from '../engine/pathGuard';
 import { PolicyEngine } from '../engine/PolicyEngine';
 import { AuditLogger } from '../logging/AuditLogger';
 import { ApprovalCache } from './ApprovalCache';
-import { Budget, BudgetRemaining, BudgetTracker } from './BudgetTracker';
+import { Budget, BudgetRemaining, BudgetStore, BudgetTracker } from './BudgetTracker';
 
 export type ActionExecutor = (params: any) => Promise<any>;
 export type PrincipalProvider = (action: Action) => Principal | Promise<Principal>;
@@ -63,6 +63,8 @@ export interface GatewayOptions {
   auditLogger?: AuditLogger;
   budget?: Budget;
   budgetTracker?: BudgetTracker;
+  /** Optional shared backend used when the gateway builds its own tracker. */
+  budgetStore?: BudgetStore;
   /** Present blocked actions as successful without executing them. Host-only. */
   shadowMode?: boolean;
 }
@@ -99,7 +101,10 @@ export class ExecutionGateway {
     this.budgetTracker = options.budgetTracker;
     this.shadowMode = options.shadowMode ?? false;
     if (!this.budgetTracker && options.budget) {
-      this.budgetTracker = new BudgetTracker({ [this.defaultPrincipalId]: options.budget });
+      this.budgetTracker = new BudgetTracker(
+        { [this.defaultPrincipalId]: options.budget },
+        options.budgetStore,
+      );
     }
   }
 
