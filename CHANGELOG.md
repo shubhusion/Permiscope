@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-28
+
 ### Added
 
 - `permiscope hook codex` maps Codex `PreToolUse`/`PermissionRequest` calls to the shared hook evaluator, leaving approval decisions to Codex's native prompt. See [ADR-0023](./docs/adr/0023-shared-hook-evaluator.md) and [hooks docs](./docs/hooks.md) (#131).
@@ -140,7 +142,8 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
   catch it. (#19)
 - GitHub Pages demo blank page caused by a case-mismatched asset base path. (#24)
 
-[Unreleased]: https://github.com/shubhusion/Permiscope/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/shubhusion/Permiscope/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/shubhusion/Permiscope/releases/tag/v2.1.0
 [2.0.0]: https://github.com/shubhusion/Permiscope/releases/tag/v2.0.0
 [1.2.0]: https://github.com/shubhusion/Permiscope/releases/tag/v1.2.0
 [1.1.0]: https://github.com/shubhusion/Permiscope/releases/tag/v1.1.0

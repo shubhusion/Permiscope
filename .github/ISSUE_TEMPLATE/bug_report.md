@@ -37,7 +37,7 @@ For HTTP/dashboard bugs, include the request, headers and response status.
 
 ## Environment
 
-- Permiscope version: (e.g. 2.0.0)
+- Permiscope version: (e.g. 2.1.0)
 - Node.js version: 24.x or 26.x
 - OS: Windows / macOS / Linux
 - Integration: library / sidecar / dashboard / MCP / Python SDK
