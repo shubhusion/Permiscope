@@ -1,0 +1,76 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Permiscope release pipeline — Trusted Publishing",
+    "output": ".archify/workflow-release-20261128-121949/release-workflow.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/shubhusion/permiscope.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "7366244b6fe079236c4cf33fbcfeea9d162ae1b6"
+    }
+  },
+  "lanes": [
+    { "id": "entry", "label": "Trigger" },
+    { "id": "workflow", "label": "Release workflow" },
+    { "id": "registry", "label": "npm registry" },
+    { "id": "github", "label": "GitHub", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "start", "label": "Entry", "fromCol": 0, "toCol": 1 },
+    { "id": "gates", "label": "Quality gates", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "publish", "label": "OIDC publish + verify", "fromCol": 5, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["trigger", "setup", "guard", "gates", "tagcheck", "publish", "registry", "release"],
+  "nodes": [
+    { "id": "trigger", "lane": "entry", "col": 0, "type": "external", "label": "Tag or dispatch", "sublabel": "v* / manual", "sources": [{ "path": ".github/workflows/release.yml", "line": 3, "end_line": 7 }] },
+    { "id": "setup", "lane": "workflow", "col": 1, "type": "backend", "label": "Setup", "sublabel": "Node 24", "sources": [{ "path": ".github/workflows/release.yml", "line": 16, "end_line": 21 }] },
+    { "id": "guard", "lane": "workflow", "col": 2, "type": "backend", "label": "npm guard", "sublabel": ">= 11.5.1", "sources": [{ "path": ".github/workflows/release.yml", "line": 22, "end_line": 29 }] },
+    { "id": "gates", "lane": "workflow", "col": 3, "type": "security", "label": "Full gate", "sublabel": "audit / build / test / e2e", "sources": [{ "path": ".github/workflows/release.yml", "line": 30, "end_line": 41 }] },
+    { "id": "tagcheck", "lane": "workflow", "col": 4, "type": "security", "label": "Tag check", "sublabel": "tag = package version", "sources": [{ "path": ".github/workflows/release.yml", "line": 42, "end_line": 47 }] },
+    { "id": "publish", "lane": "workflow", "col": 5, "type": "messagebus", "label": "OIDC publish", "sublabel": "--provenance", "sources": [{ "path": ".github/workflows/release.yml", "line": 48, "end_line": 51 }] },
+    { "id": "registry", "lane": "registry", "col": 5, "type": "database", "label": "npm registry", "sublabel": "attestation + tarball", "sources": [{ "path": ".github/workflows/release.yml", "line": 48, "end_line": 51 }] },
+    { "id": "release", "lane": "github", "col": 5, "type": "cloud", "label": "GitHub Release", "sublabel": "generated notes", "sources": [{ "path": "MAINTAINING.md", "line": 109, "end_line": 121 }] }
+  ],
+  "edges": [
+    { "id": "trigger-setup", "from": "trigger", "to": "setup", "label": "run", "variant": "emphasis" },
+    { "id": "setup-guard", "from": "setup", "to": "guard" },
+    { "id": "guard-gates", "from": "guard", "to": "gates" },
+    { "id": "gates-tagcheck", "from": "gates", "to": "tagcheck", "label": "all pass", "variant": "emphasis" },
+    { "id": "tagcheck-publish", "from": "tagcheck", "to": "publish", "label": "match", "variant": "security" },
+    { "id": "publish-registry", "from": "publish", "to": "registry", "label": "no token / no 2FA" },
+    { "id": "registry-release", "from": "registry", "to": "release", "label": "verify + tag", "role": "return", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One release path",
+      "items": [
+        "A v* tag or manual dispatch starts the same workflow",
+        "The npm version must match the tag on tag-triggered runs",
+        "No long-lived NPM_TOKEN is used"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trusted Publishing",
+      "items": [
+        "GitHub OIDC authenticates the workflow to npm",
+        "The publisher is scoped to shubhusion/Permiscope/release.yml",
+        "npm publish emits a Sigstore provenance attestation"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "After publish",
+      "items": [
+        "Confirm the registry serves the new version",
+        "Install the registry tarball and run the README quick-start",
+        "Create the GitHub Release and close the milestone"
+      ]
+    }
+  ]
+}

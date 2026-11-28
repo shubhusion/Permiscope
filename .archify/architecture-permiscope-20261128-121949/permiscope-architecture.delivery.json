@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "2ad9c798-937c-4d18-bc79-fc39f9804f76",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\Github\\Permiscope\\.archify\\architecture-permiscope-20261128-121949\\candidate.json",
+  "output": "D:\\Github\\Permiscope\\.archify\\architecture-permiscope-20261128-121949\\permiscope-architecture.html",
+  "specification": {
+    "sha256": "7129795c89a9126a98323d9a3623fca8d9257318c56c07ac59dc470e6fc34a41",
+    "bytes": 7213
+  },
+  "artifact": {
+    "sha256": "75b59f87877afed003caeaf077a8127047f95286e4e17d515efb604d7cbcbecc",
+    "bytes": 966353
+  }
+}

@@ -108,6 +108,8 @@ runtime, so the gate blocks high/critical only. Recheck before any Jest major ch
 
 ## Release process
 
+![Release pipeline](./docs/assets/release-workflow.svg)
+
 1. Confirm `main` is green and all milestone issues are closed.
 2. Update `CHANGELOG.md` under `Unreleased`; move entries to the new version with a date.
 3. Bump the version with `npm version <patch|minor|major>` — strict SemVer.

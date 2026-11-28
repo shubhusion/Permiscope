@@ -36,16 +36,11 @@ Current agent frameworks typically operate with:
 
 Instead of agents directly accessing files, APIs, or shells, every action flows through Permiscope’s **Secure Execution Gateway**.
 
-```mermaid
-graph LR
-    Agent[🤖 AI Agent] --> Gateway[🔒 Secure Gateway]
-    Gateway --> Policy{📜 Policy Engine}
-    Policy -->|✅ Allow| System[💻 System / API]
-    Policy -->|❌ Block| Agent
-    Policy -->|🙋 Approvals| Human[👤 Human Admin]
-    Human -->|Approve| System
-    Gateway -.->|📝 Logs| Audit[Audit Trail]
-```
+![Permiscope architecture: governed execution layer](./docs/assets/permiscope-architecture.svg)
+
+Every action passes through the gateway, where principal verification, budgets and policy
+decide whether an executor may touch a resource. Signed INTENT and RESULT records bracket
+each execution. [Full architecture →](./docs/architecture.md)
 
 ## ✨ Key Capabilities
 

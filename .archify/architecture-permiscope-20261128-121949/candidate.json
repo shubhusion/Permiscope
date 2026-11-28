@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Permiscope v1.2.0 — mediated execution layer",
+    "output": ".archify/architecture-permiscope-20261128-121949/permiscope-architecture.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/shubhusion/permiscope.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "7366244b6fe079236c4cf33fbcfeea9d162ae1b6"
+    }
+  },
+  "layout": { "mode": "auto" },
+  "components": [
+    {
+      "id": "agent",
+      "type": "external",
+      "label": "Agent / SDK",
+      "sublabel": "act() and wrap()",
+      "sources": [
+        { "path": "src/adapters/PermiscopeAdapter.ts", "line": 37, "end_line": 85 },
+        { "path": "src/index.ts", "line": 74, "end_line": 82 }
+      ]
+    },
+    {
+      "id": "python",
+      "type": "external",
+      "label": "Python SDK",
+      "sublabel": "stdlib HTTP client",
+      "sources": [{ "path": "python/permiscope/__init__.py", "line": 17, "end_line": 40 }]
+    },
+    {
+      "id": "mcp",
+      "type": "external",
+      "label": "MCP client",
+      "sublabel": "tool-call adapter",
+      "sources": [{ "path": "src/adapters/McpGovernor.ts", "line": 35, "end_line": 60 }]
+    },
+    {
+      "id": "dashboard",
+      "type": "frontend",
+      "label": "Console",
+      "sublabel": "approvals + audit views",
+      "sources": [{ "path": "src/dashboard/server.ts", "line": 71, "end_line": 132 }]
+    },
+    {
+      "id": "sidecar",
+      "type": "backend",
+      "label": "HTTP sidecar",
+      "sublabel": "/v1/decide + /v1/execute",
+      "sources": [{ "path": "src/sidecar/server.ts", "line": 98, "end_line": 133 }]
+    },
+    {
+      "id": "context",
+      "type": "security",
+      "label": "Request context",
+      "sublabel": "AsyncLocalStorage token",
+      "sources": [{ "path": "src/core/requestContext.ts", "line": 1, "end_line": 20 }]
+    },
+    {
+      "id": "principal",
+      "type": "security",
+      "label": "Verified principal",
+      "sublabel": "JWT claims or host default",
+      "sources": [{ "path": "src/auth/verifiedPrincipal.ts", "line": 20, "end_line": 74 }]
+    },
+    {
+      "id": "gateway",
+      "type": "backend",
+      "label": "ExecutionGateway",
+      "sublabel": "decide() and run()",
+      "sources": [
+        { "path": "src/gateway/ExecutionGateway.ts", "line": 105, "end_line": 206 },
+        { "path": "src/gateway/ExecutionGateway.ts", "line": 255, "end_line": 300 }
+      ]
+    },
+    {
+      "id": "budget",
+      "type": "backend",
+      "label": "BudgetTracker",
+      "sublabel": "attempts vs executions",
+      "sources": [
+        { "path": "src/gateway/BudgetTracker.ts", "line": 108, "end_line": 166 }
+      ]
+    },
+    {
+      "id": "policy",
+      "type": "security",
+      "label": "PolicyEngine",
+      "sublabel": "when / guard / guardrails",
+      "sources": [
+        { "path": "src/engine/PolicyEngine.ts", "line": 25, "end_line": 77 },
+        { "path": "src/engine/PolicyEngine.ts", "line": 132, "end_line": 145 }
+      ]
+    },
+    {
+      "id": "approval",
+      "type": "database",
+      "label": "ApprovalCache",
+      "sublabel": "TTL + durable JSON",
+      "sources": [
+        { "path": "src/gateway/ApprovalCache.ts", "line": 19, "end_line": 35 },
+        { "path": "src/gateway/ApprovalCache.ts", "line": 123, "end_line": 172 }
+      ]
+    },
+    {
+      "id": "idempotency",
+      "type": "database",
+      "label": "IdempotencyCache",
+      "sublabel": "bounded replay cache",
+      "sources": [{ "path": "src/gateway/IdempotencyCache.ts", "line": 14, "end_line": 67 }]
+    },
+    {
+      "id": "audit",
+      "type": "database",
+      "label": "AuditLogger",
+      "sublabel": "signed INTENT + RESULT",
+      "sources": [
+        { "path": "src/logging/AuditLogger.ts", "line": 164, "end_line": 222 }
+      ]
+    },
+    {
+      "id": "executors",
+      "type": "backend",
+      "label": "Executors",
+      "sublabel": "argv commands + file I/O",
+      "sources": [
+        { "path": "src/gateway/ExecutionGateway.ts", "line": 458, "end_line": 540 },
+        { "path": "src/engine/pathGuard.ts", "line": 40, "end_line": 84 }
+      ]
+    },
+    {
+      "id": "resources",
+      "type": "external",
+      "label": "Resources",
+      "sublabel": "files / shell / APIs",
+      "sources": [{ "path": "src/gateway/ExecutionGateway.ts", "line": 458, "end_line": 540 }]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Permiscope trust layer (library components)",
+      "wraps": ["context", "principal", "gateway", "budget", "policy", "approval", "idempotency", "audit", "executors"]
+    }
+  ],
+  "connections": [
+    { "id": "agent-gateway", "from": "agent", "to": "gateway", "label": "governed call", "variant": "emphasis" },
+    { "id": "python-sidecar", "from": "python", "to": "sidecar", "label": "HTTP" },
+    { "id": "mcp-gateway", "from": "mcp", "to": "gateway", "label": "callTool" },
+    { "id": "dashboard-approval", "from": "dashboard", "to": "approval", "label": "approve / reject" },
+    { "id": "dashboard-audit", "from": "dashboard", "to": "audit", "label": "read chain", "variant": "dashed" },
+    { "id": "sidecar-context", "from": "sidecar", "to": "context", "label": "bearer token", "variant": "security" },
+    { "id": "context-principal", "from": "context", "to": "principal", "label": "verify", "variant": "security" },
+    { "id": "sidecar-gateway", "from": "sidecar", "to": "gateway", "label": "decide / run", "variant": "emphasis" },
+    { "id": "gateway-budget", "from": "gateway", "to": "budget", "label": "check + reserve" },
+    { "id": "gateway-policy", "from": "gateway", "to": "policy", "label": "evaluate", "variant": "security" },
+    { "id": "gateway-approval", "from": "gateway", "to": "approval", "label": "wait / cache" },
+    { "id": "gateway-idempotency", "from": "gateway", "to": "idempotency", "label": "replay key", "variant": "dashed" },
+    { "id": "gateway-audit", "from": "gateway", "to": "audit", "label": "INTENT + RESULT", "variant": "security" },
+    { "id": "gateway-executors", "from": "gateway", "to": "executors", "label": "execute" },
+    { "id": "executors-resources", "from": "executors", "to": "resources", "label": "mediated I/O" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Entry points",
+      "items": [
+        "Agent SDK calls the gateway directly through the adapter",
+        "Python and other languages use the loopback HTTP sidecar",
+        "MCP tool calls and the console are additional governed consumers"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security gates",
+      "items": [
+        "Credentials live in request context, never on the Action",
+        "Verified principals, budgets and policies are shared by decide and execute",
+        "Every executed action is bracketed by signed INTENT and RESULT records"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Detection only",
+      "items": [
+        "Postconditions and TOCTOU re-resolution report violations after the executor runs",
+        "The cache, approval file and audit log are single-machine and file-backed"
+      ]
+    }
+  ]
+}

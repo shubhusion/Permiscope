@@ -35,14 +35,18 @@ await permiscope.act('read_file', { path: 'data.json' });
 
 ### Can I use custom action types?
 
-Yes. Register custom executors:
+Yes. Pass custom executors when constructing the gateway:
 
 ```typescript
-gateway.registerExecutor('my_action', async (action) => {
-  // Your logic here
-  return { success: true, output: 'result' };
+const gateway = new ExecutionGateway(engine, {
+  my_action: async (params) => {
+    // Your logic here; params are the action parameters.
+    return 'result';
+  },
 });
 ```
+
+See [custom executors](./custom-executors.md) for details.
 
 ### How do I define policies?
 

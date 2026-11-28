@@ -8,16 +8,10 @@ When a policy scope specifies `REQUIRE_APPROVAL`, the action is paused until a h
 
 ## Approval Lifecycle
 
-```mermaid
-stateDiagram-v2
-    [*] --> PENDING: Request Created
-    PENDING --> APPROVED: Human Approves
-    PENDING --> REJECTED: Human Rejects
-    PENDING --> EXPIRED: TTL Exceeded
-    APPROVED --> [*]: Action Executed
-    REJECTED --> [*]: Action Blocked
-    EXPIRED --> [*]: Action Blocked
-```
+![Approval lifecycle](./assets/approval-lifecycle.svg)
+
+A cached approval can skip the wait entirely. Both rejection and expiry (or a gateway
+timeout with no TTY) end in a fail-closed `BLOCK`.
 
 ## Approval Request Structure
 
