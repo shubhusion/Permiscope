@@ -31,7 +31,7 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
 - Real-process end-to-end harness (`npm run e2e`) and manual validation checklist (#58).
 - Real MCP SDK client/server integration tests via `InMemoryTransport` (#58).
 - Browser/pages smoke check in the deploy workflow (#24).
-- Release workflow with npm provenance and a tarball install/quick-start smoke test (#67).
+- Release workflow with npm Trusted Publishing (OIDC), provenance and a tarball install/quick-start smoke test (#67).
 
 ### Changed
 
