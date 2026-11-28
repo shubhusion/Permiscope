@@ -35,6 +35,11 @@ export interface AuditLoggerOptions {
   logPath?: string;
   /** Result fields whose values may be logged. Defaults to none: output and error are redacted. */
   allowedOutputKeys?: string[];
+  /**
+   * Fail closed when no signing secret is available. Host servers enable this;
+   * the library default stays permissive for local development (ADR-0020).
+   */
+  requireSignature?: boolean;
   /** Opt-in segmented storage (see ADR-0017). Legacy single file remains the default. */
   segmented?: boolean;
   /** Directory for segments; defaults to <baseDir>/audit. */
@@ -115,6 +120,7 @@ export class AuditLogger {
   private keyId: string;
   private keyRing: Map<string, string>;
   private allowedOutputKeys: Set<string>;
+  private requireSignature: boolean;
   private segmented: boolean;
   private segmentDir: string;
   private manifestPath: string;
@@ -135,6 +141,12 @@ export class AuditLogger {
     this.allowedOutputKeys = new Set(options.allowedOutputKeys ?? []);
     this.secret =
       options.secret ?? this.keyRing.get(this.keyId) ?? process.env.PERMISCOPE_AUDIT_SECRET ?? null;
+    this.requireSignature = options.requireSignature ?? false;
+    if (this.requireSignature && !this.secret) {
+      throw new Error(
+        'Audit signing secret required: set PERMISCOPE_AUDIT_SECRET (or PERMISCOPE_ALLOW_UNSIGNED_AUDIT=true for local development)',
+      );
+    }
     this.segmented = options.segmented ?? false;
     this.segmentDir = options.logDir ?? path.join(baseDir, 'audit');
     this.manifestPath = path.join(this.segmentDir, 'manifest.json');

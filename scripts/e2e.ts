@@ -17,6 +17,7 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const dashboardUrl = 'http://127.0.0.1:3100';
 const sidecarUrl = 'http://127.0.0.1:8788';
 const token = 'e2e-token';
+const auditSecret = 'e2e-audit-secret';
 
 function check(condition: boolean, message: string): void {
   if (!condition) throw new Error(`E2E FAILED: ${message}`);
@@ -72,12 +73,14 @@ async function main(): Promise<void> {
       start('node', ['-r', 'ts-node/register', 'src/dashboard/server.ts'], {
         PERMISCOPE_DASHBOARD_TOKEN: token,
         PERMISCOPE_DASHBOARD_PORT: '3100',
+        PERMISCOPE_AUDIT_SECRET: auditSecret,
       }),
     );
     children.push(
       start('node', ['-r', 'ts-node/register', 'src/cli/index.ts', 'serve'], {
         PERMISCOPE_SIDECAR_TOKEN: token,
         PERMISCOPE_SIDECAR_PORT: '8788',
+        PERMISCOPE_AUDIT_SECRET: auditSecret,
       }),
     );
     await waitFor(`${dashboardUrl}/`, 'dashboard');

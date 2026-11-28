@@ -81,16 +81,19 @@ Permiscope defaults to **fail-closed** (deny on error):
 |----------|----------|
 | Unknown action type | `BLOCK` |
 | Validator throws error | `BLOCK` |
-| Audit log write fails (strict mode) | Action blocked |
+| Audit log write fails (strict mode; hosts enable it) | Action blocked |
+| Dashboard token missing | Every API request returns 401 |
+| Host audit secret missing | Dashboard/sidecar refuse to start |
 | Lock acquisition fails | Operation retried or fails |
 | Regex pattern unsafe | Policy rejected at construction (fail closed) |
+| Command outside the allowlist | `BLOCK` with `GUARDRAIL_COMMAND_NOT_ALLOWED` |
 
 ## Audit Guarantees
 
 | Property | How |
 |----------|-----|
 | **Integrity** | SHA-256 hash chain links entries |
-| **Authenticity** | HMAC-SHA256 signature (when secret set) |
+| **Authenticity** | HMAC-SHA256 signature; required for hosts, optional for library callers (ADR-0020) |
 | **Tamper Detection** | `verifyChain()` method |
 | **Atomicity** | File locking via `proper-lockfile` |
 

@@ -2,6 +2,8 @@ import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 import { startSidecar } from '../../sidecar/server';
 
+process.env.PERMISCOPE_AUDIT_SECRET = 'bind-test-key';
+
 describe('startSidecar bind errors', () => {
   let blocker: Server;
 

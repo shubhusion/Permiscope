@@ -8,6 +8,7 @@ import { Action, Policy } from '../core/types';
 import { withRequestContext } from '../core/requestContext';
 import { IdempotencyCache } from '../gateway/IdempotencyCache';
 import { BudgetStore } from '../gateway/BudgetTracker';
+import { AuditLogger } from '../logging/AuditLogger';
 
 const ActionInputSchema = z.object({
   actionName: z.string().min(1),
@@ -81,18 +82,26 @@ export function createSidecar(options: SidecarOptions): {
     next();
   });
 
+  // Hosts fail closed: a missing signing key or unwritable audit log must not
+  // turn into an allow (ADR-0020). Callers can still supply their own logger.
+  const gatewayOptions: GatewayOptions = {
+    ...options.gatewayOptions,
+    auditLogger:
+      options.gatewayOptions?.auditLogger ??
+      new AuditLogger('./logs', true, {
+        requireSignature: process.env.PERMISCOPE_ALLOW_UNSIGNED_AUDIT !== 'true',
+      }),
+    ...(options.budgetStore ? { budgetStore: options.budgetStore } : {}),
+    defaultPrincipalId:
+      options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar',
+    // A service has no TTY: never wait for an interactive human.
+    approver: options.gatewayOptions?.approver ?? (async () => false),
+    approvalTimeoutMs: options.gatewayOptions?.approvalTimeoutMs ?? 1000,
+  };
   const gateway = new ExecutionGateway(
     new PolicyEngine(options.policy),
     options.customExecutors ?? {},
-    {
-      ...options.gatewayOptions,
-      ...(options.budgetStore ? { budgetStore: options.budgetStore } : {}),
-      defaultPrincipalId:
-        options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar',
-      // A service has no TTY: never wait for an interactive human.
-      approver: options.gatewayOptions?.approver ?? (async () => false),
-      approvalTimeoutMs: options.gatewayOptions?.approvalTimeoutMs ?? 1000,
-    },
+    gatewayOptions,
   );
 
   app.get('/health', (_req, res) => {

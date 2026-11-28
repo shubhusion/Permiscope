@@ -12,11 +12,16 @@ The web console in `web/` is a static React app. It has two modes:
 ## Local development
 
 ```bash
+export PERMISCOPE_DASHBOARD_TOKEN=local-token
+export PERMISCOPE_AUDIT_SECRET=local-audit-key
 npm run dev:dashboard   # terminal 1: API at localhost:3000
 npm run dev:web         # terminal 2: Vite proxy for /api
 npm run fixture:web     # regenerate the demo fixture
 npm run build:web       # output: dist/web
 ```
+
+Both variables are required by the dashboard host; see
+[ADR-0020](./adr/0020-fail-closed-host-defaults.md) for the explicit local-only opt-outs.
 
 ## Static deployment
 

@@ -2,6 +2,7 @@ import { Server } from 'http';
 import { AddressInfo } from 'net';
 
 process.env.PERMISCOPE_DASHBOARD_TOKEN = 'dashboard-test-token';
+process.env.PERMISCOPE_AUDIT_SECRET = 'dashboard-test-key';
 
 describe('dashboard API authentication', () => {
   let server: Server;

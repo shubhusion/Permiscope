@@ -19,9 +19,13 @@ Every `/api/*` route requires a bearer token. Set it before starting the server:
 export PERMISCOPE_DASHBOARD_TOKEN=your-secret-token
 ```
 
-Requests must include `Authorization: Bearer <token>`. Without a token the server
-starts with a warning and all API routes are open — never do this outside local
-development. CORS restricts browser origins but is not authentication.
+Requests must include `Authorization: Bearer <token>`. Without a token every API
+request returns 401 and the server warns that it refuses requests. For local-only
+development, `PERMISCOPE_DASHBOARD_ALLOW_ANONYMOUS=true` restores the old behavior
+explicitly. CORS restricts browser origins but is not authentication.
+
+The dashboard also requires `PERMISCOPE_AUDIT_SECRET` and refuses to start without it
+([ADR-0020](./adr/0020-fail-closed-host-defaults.md)).
 
 The React console asks for the token in the header and keeps it in memory only; it
 is never written to local storage or bundled into the static demo.

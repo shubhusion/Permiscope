@@ -9,13 +9,15 @@ import { AuditLogger, redactSensitive } from '../logging/AuditLogger';
 export const app = express();
 const port = Number(process.env.PERMISCOPE_DASHBOARD_PORT ?? 3000);
 
-// Security: API token from environment variable
+// Security: API token from environment variable. Hosts fail closed (ADR-0020).
 const API_TOKEN = process.env.PERMISCOPE_DASHBOARD_TOKEN;
+const ALLOW_ANONYMOUS = process.env.PERMISCOPE_DASHBOARD_ALLOW_ANONYMOUS === 'true';
+const ALLOW_UNSIGNED_AUDIT = process.env.PERMISCOPE_ALLOW_UNSIGNED_AUDIT === 'true';
 
-if (!API_TOKEN) {
+if (!API_TOKEN && !ALLOW_ANONYMOUS) {
   console.warn(
-    '⚠️  PERMISCOPE_DASHBOARD_TOKEN not set. All dashboard API routes are unauthenticated! ' +
-      'Set this environment variable in production for security.',
+    '⚠️  PERMISCOPE_DASHBOARD_TOKEN not set. All dashboard API routes will be rejected. ' +
+      'Set the token, or PERMISCOPE_DASHBOARD_ALLOW_ANONYMOUS=true for local development only.',
   );
 }
 
@@ -36,7 +38,10 @@ app.use(express.static(staticDir));
 
 const approvalCache = new ApprovalCache();
 const segmented = fs.existsSync(path.join('./logs', 'audit', 'manifest.json'));
-const auditLogger = new AuditLogger('./logs', false, { segmented });
+const auditLogger = new AuditLogger('./logs', true, {
+  segmented,
+  requireSignature: !ALLOW_UNSIGNED_AUDIT,
+});
 const logPath = './logs/audit.log';
 
 // Authentication middleware for API routes
@@ -46,9 +51,11 @@ const authMiddleware = (
   next: express.NextFunction,
 ) => {
   if (req.method === 'OPTIONS') return next();
-  // Skip auth in development if no token is set
+  // No token means no access, unless the host explicitly opts into anonymous
+  // local development. CORS is not authentication.
   if (!API_TOKEN) {
-    return next();
+    if (ALLOW_ANONYMOUS) return next();
+    return res.status(401).json({ error: 'Unauthorized. Configure PERMISCOPE_DASHBOARD_TOKEN.' });
   }
 
   const authHeader = req.headers.authorization;
