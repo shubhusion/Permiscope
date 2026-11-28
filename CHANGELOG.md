@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `permiscope hook codex` maps Codex `PreToolUse`/`PermissionRequest` calls to the shared hook evaluator, leaving approval decisions to Codex's native prompt. See [ADR-0023](./docs/adr/0023-shared-hook-evaluator.md) and [hooks docs](./docs/hooks.md) (#131).
 - `permiscope hook cursor` maps Cursor's shell, file and MCP hooks to the shared hook evaluator, with fail-closed verdicts and Cursor-specific `ask` handling. See [ADR-0023](./docs/adr/0023-shared-hook-evaluator.md) and [hooks docs](./docs/hooks.md) (#129).
 
 ## [2.0.0] - 2026-11-28

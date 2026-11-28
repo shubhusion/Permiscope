@@ -116,23 +116,82 @@ a denial so the action cannot proceed silently; use a dedicated `before*` hook t
 `ask`. Malformed input, unmapped tools and policy errors deny. Observational events
 (`postToolUse`, `afterFileEdit`, `sessionStart`, `stop`, …) return no verdict.
 
+## Codex
+
+Codex hooks live in `.codex/hooks.json` (trusted project layer), `$CODEX_HOME/hooks.json`
+(user) or system config. New or changed hooks must be reviewed once with `/hooks` before
+Codex runs them. Codex does not support `ask` on `PreToolUse`, so approval decisions are
+left undecided and the native permission prompt handles them.
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Write|Edit|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y permiscope hook codex",
+            "timeout": 30,
+            "statusMessage": "Checking Permiscope policy"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash|apply_patch|Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "npx -y permiscope hook codex" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Output for a denied call:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Permiscope blocked: GUARDRAIL_COMMAND_NOT_ALLOWED"
+  }
+}
+```
+
+`PermissionRequest` uses `hookSpecificOutput.decision.behavior` (`allow`/`deny`) instead.
+If Permiscope returns no decision, Codex continues with its normal approval prompt.
+
+| Codex tool | Governed action |
+|---|---|
+| `Bash` | `run_command` |
+| `apply_patch`, `Edit`, `Write` | `write_file` (requires a path in `tool_input`) |
+| `mcp__<server>__<tool>` | `call_api` |
+
+`apply_patch` payloads without a stable file path are denied rather than guessed.
+Malformed input, unmapped tools and policy errors deny. Other events return no verdict.
+
 ## Shared rules
 
 The default policy allows only `echo`, `pwd`, `git status`, `git diff`, `git log`,
 `git show`, `git rev-parse` and `npm test`, and confines file actions to the workspace
 and temp directories. Other commands are denied or require approval.
 
-| Permiscope decision | Claude Code | Cursor `before*` | Cursor `preToolUse` |
-|---|---|---|---|
-| `ALLOW` | `allow` | `allow` | `allow` |
-| `BLOCK` / `SHADOW_BLOCK` | `deny` | `deny` | `deny` |
-| `REQUIRE_APPROVAL` | `ask` | `ask` | `deny` |
-| Unmapped tool | `ask` | `deny` | `deny` |
-| Malformed input or policy error | `deny` | `deny` | `deny` |
+| Permiscope decision | Claude Code | Cursor `before*` | Cursor `preToolUse` | Codex |
+|---|---|---|---|---|
+| `ALLOW` | `allow` | `allow` | `allow` | `allow` / `behavior: allow` |
+| `BLOCK` / `SHADOW_BLOCK` | `deny` | `deny` | `deny` | `deny` / `behavior: deny` |
+| `REQUIRE_APPROVAL` | `ask` | `ask` | `deny` | no decision (native prompt) |
+| Unmapped tool | `ask` | `deny` | `deny` | `deny` |
+| Malformed input or policy error | `deny` | `deny` | `deny` | `deny` |
 
-`permiscope hook` remains the Claude Code command for compatibility; pass `cursor` to
-select the Cursor adapter. The CLI never auto-detects the host: an unrecognized payload
-shape must not become an implicit allow.
+`permiscope hook` remains the Claude Code command for compatibility; pass `cursor` or
+`codex` to select another adapter. The CLI never auto-detects the host: an unrecognized
+payload shape must not become an implicit allow.
 
 ## Limitations
 
