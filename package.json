@@ -75,6 +75,10 @@
     },
     "./package.json": "./package.json"
   },
+  "overrides": {
+    "minimatch": "^11.0.9",
+    "glob": "^14.0.6"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.3.0",
