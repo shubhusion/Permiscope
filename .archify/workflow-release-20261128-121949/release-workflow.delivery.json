@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "f4e1442f-1d07-4307-ac36-d933a9c40ec2",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "D:\\Github\\Permiscope\\.archify\\workflow-release-20261128-121949\\candidate.json",
+  "output": "D:\\Github\\Permiscope\\.archify\\workflow-release-20261128-121949\\release-workflow.html",
+  "specification": {
+    "sha256": "76ee1e44dcc628461d8479cd8420aa038d1d192cc61ed46cb195f97e8d478503",
+    "bytes": 4369
+  },
+  "artifact": {
+    "sha256": "b4f0c081bb548067dcdf8b6620212433ad4b93fbad2ee5939f71f07006231af4",
+    "bytes": 937855
+  }
+}

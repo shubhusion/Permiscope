@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "54077bff-0ed2-49e6-b602-5900c0558bcc",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "D:\\Github\\Permiscope\\.archify\\lifecycle-approval-20261128-121949\\candidate.json",
+  "output": "D:\\Github\\Permiscope\\.archify\\lifecycle-approval-20261128-121949\\approval-lifecycle.html",
+  "specification": {
+    "sha256": "a007523388d3567b5c44e49eb80c0c106023e2126a8211d26beb053d3c5c7342",
+    "bytes": 4105
+  },
+  "artifact": {
+    "sha256": "3795db6ffc15524a53d7a6f0bfc17bc3a32b64ca3c8ff8fb6c09c404662d9dcf",
+    "bytes": 935639
+  }
+}

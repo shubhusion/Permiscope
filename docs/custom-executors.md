@@ -1,49 +1,44 @@
 # Custom Executors
 
-Permiscope allows registering custom action handlers for extending functionality.
+Built-in executors handle `read_file`, `write_file` and `run_command`. To support other
+actions, pass a map of executors to the `ExecutionGateway` constructor (or set
+`customExecutors` on `PermiscopeAdapter`).
 
-## Overview
-
-Built-in executors handle `read_file`, `write_file`, and `run_command`. For other actions, register custom executors.
-
-## Registering an Executor
+## Registering an executor
 
 ```typescript
-import { ExecutionGateway } from 'permiscope';
+import { ExecutionGateway, PolicyEngine } from 'permiscope';
 
-const gateway = new ExecutionGateway(policy);
-
-// Register a custom executor
-gateway.registerExecutor('call_api', async (action) => {
-  const { url, method, body } = action.parameters;
-  
-  const response = await fetch(url, {
-    method: method || 'GET',
-    body: body ? JSON.stringify(body) : undefined,
-    headers: { 'Content-Type': 'application/json' }
-  });
-  
-  return {
-    success: response.ok,
-    output: await response.text(),
-    error: response.ok ? undefined : response.statusText
-  };
+const engine = new PolicyEngine(policy);
+const gateway = new ExecutionGateway(engine, {
+  call_api: async (params) => {
+    const response = await fetch(params.url, {
+      method: params.method ?? 'GET',
+      body: params.body ? JSON.stringify(params.body) : undefined,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.text();
+  },
 });
 ```
 
-## Executor Interface
+There is no `gateway.registerExecutor()` method. Executors are supplied at construction
+time so that every governed call has exactly one execution path.
+
+## Executor interface
 
 ```typescript
-type Executor = (action: Action) => Promise<ExecutorResult>;
-
-interface ExecutorResult {
-  success: boolean;
-  output?: string;
-  error?: string;
-}
+type ActionExecutor = (params: Record<string, any>) => Promise<any>;
 ```
 
-## Policy for Custom Actions
+The executor receives `action.parameters` and returns the output value directly.
+Throwing marks the action unsuccessful with `success: false` and the error message.
+
+## Policy for custom actions
+
+Use `when` for applicability and `guard` for hard denial. A `guard` that returns false
+blocks even if a later ALLOW scope matches.
 
 ```typescript
 const policy = {
@@ -51,92 +46,50 @@ const policy = {
     {
       actionName: 'call_api',
       decision: 'ALLOW',
-      validator: (action) => {
-        const url = action.parameters.url || '';
-        // Only allow internal APIs
-        return url.startsWith('https://api.internal.com');
-      }
+      guard: (action) => String(action.parameters.url || '').startsWith('https://api.internal.com'),
     },
-    {
-      actionName: 'call_api',
-      decision: 'BLOCK' // Block all other APIs
-    }
-  ]
+  ],
 };
 ```
 
-## Built-in Executors Reference
+## Built-in executors
 
 | Action | Parameters | Behavior |
 |--------|------------|----------|
-| `read_file` | `{ path: string }` | Returns file contents |
-| `write_file` | `{ path: string, content: string }` | Writes content to file |
-| `run_command` | `{ command: string }` | Executes shell command |
+| `read_file` | `{ path: string }` | async read via `fs.promises.readFile` |
+| `write_file` | `{ path: string, content: string }` | async write via `fs.promises.writeFile` |
+| `run_command` | `{ command: string, timeoutMs?, maxOutputBytes? }` | AST-parsed argv, `spawn` without a shell |
 
-## Best Practices
+## Best practices
 
-### 1. Fail-Closed
-
-Always handle errors gracefully:
+### Fail closed
 
 ```typescript
-gateway.registerExecutor('my_action', async (action) => {
-  try {
-    // ... execution logic
-    return { success: true, output: result };
-  } catch (e) {
-    return { success: false, error: String(e) };
-  }
+const gateway = new ExecutionGateway(engine, {
+  my_action: async (params) => {
+    if (!params.target) throw new Error('Missing target');
+    return doWork(params.target);
+  },
 });
 ```
 
-### 2. Validate Parameters
+### Validate parameters
 
-Check required parameters before executing:
+Check required parameters before executing; a throw is reported as a failed action.
 
-```typescript
-gateway.registerExecutor('send_email', async (action) => {
-  const { to, subject, body } = action.parameters;
-  
-  if (!to || !subject) {
-    return { success: false, error: 'Missing required parameters' };
-  }
-  
-  // ... send email
-});
-```
+### Timeouts
 
-### 3. Timeouts
+Implement timeouts for external calls, for example with `AbortController`.
 
-Implement timeouts for external calls:
+### Dry run
 
-```typescript
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 5000);
+Executors are not called when `gateway.run(action, true)` is used.
 
-try {
-  const response = await fetch(url, { signal: controller.signal });
-  // ...
-} finally {
-  clearTimeout(timeout);
-}
-```
-
-### 4. Avoid Side Effects in Dry-Run
-
-Executors are not called in dry-run mode, but if implementing custom logic, check:
-
-```typescript
-if (action.dryRun) {
-  return { success: true, output: '[DRY RUN]' };
-}
-```
-
-## Security Considerations
+## Security considerations
 
 | Risk | Mitigation |
 |------|------------|
-| External API calls | Use allowlist in policy validator |
-| Credentials exposure | Store secrets in environment, not parameters |
-| Rate limiting | Implement throttling in executor |
-| Injection | Sanitize all parameters |
+| External API calls | Allowlist URLs with a policy `guard` |
+| Credentials exposure | Store secrets in the environment, not in parameters |
+| Rate limiting | Use a shared `BudgetTracker` store or throttle in the executor |
+| Injection | Use AST-parsed commands; never concatenate parameters into a shell string |

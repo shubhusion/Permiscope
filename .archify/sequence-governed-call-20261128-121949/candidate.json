@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Governed call lifecycle — v1.2.0",
+    "output": ".archify/sequence-governed-call-20261128-121949/governed-call.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/shubhusion/permiscope.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "7366244b6fe079236c4cf33fbcfeea9d162ae1b6"
+    }
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "Caller",
+      "sublabel": "SDK / sidecar",
+      "sources": [
+        {
+          "path": "src/adapters/PermiscopeAdapter.ts",
+          "line": 57,
+          "end_line": 85
+        }
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "backend",
+      "label": "Gateway",
+      "sublabel": "decide + run",
+      "sources": [
+        {
+          "path": "src/gateway/ExecutionGateway.ts",
+          "line": 105,
+          "end_line": 206
+        }
+      ]
+    },
+    {
+      "id": "principal",
+      "type": "security",
+      "label": "Principal",
+      "sublabel": "JWT verification",
+      "sources": [
+        {
+          "path": "src/auth/verifiedPrincipal.ts",
+          "line": 20,
+          "end_line": 74
+        }
+      ]
+    },
+    {
+      "id": "budget",
+      "type": "backend",
+      "label": "Budget",
+      "sublabel": "attempts / executions",
+      "sources": [
+        {
+          "path": "src/gateway/BudgetTracker.ts",
+          "line": 108,
+          "end_line": 166
+        }
+      ]
+    },
+    {
+      "id": "policy",
+      "type": "security",
+      "label": "Policy",
+      "sublabel": "when / guard",
+      "sources": [
+        {
+          "path": "src/engine/PolicyEngine.ts",
+          "line": 25,
+          "end_line": 77
+        }
+      ]
+    },
+    {
+      "id": "approval",
+      "type": "database",
+      "label": "Approval",
+      "sublabel": "TTL cache",
+      "sources": [
+        {
+          "path": "src/gateway/ApprovalCache.ts",
+          "line": 89,
+          "end_line": 172
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "type": "database",
+      "label": "Audit",
+      "sublabel": "signed chain",
+      "sources": [
+        {
+          "path": "src/logging/AuditLogger.ts",
+          "line": 164,
+          "end_line": 222
+        }
+      ]
+    },
+    {
+      "id": "executor",
+      "type": "backend",
+      "label": "Executor",
+      "sublabel": "built-in or custom",
+      "sources": [
+        {
+          "path": "src/gateway/ExecutionGateway.ts",
+          "line": 458,
+          "end_line": 500
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 270,
+      "label": "Resolve identity"
+    },
+    {
+      "from": 295,
+      "to": 390,
+      "label": "Authorize"
+    },
+    {
+      "from": 410,
+      "to": 670,
+      "label": "Execute + record"
+    }
+  ],
+  "messages": [
+    {
+      "id": "run",
+      "from": "caller",
+      "to": "gateway",
+      "y": 160,
+      "label": "run(action)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "verify",
+      "from": "gateway",
+      "to": "principal",
+      "y": 190,
+      "label": "verify JWT",
+      "variant": "security"
+    },
+    {
+      "id": "claims",
+      "from": "principal",
+      "to": "gateway",
+      "y": 220,
+      "label": "id + roles",
+      "variant": "return"
+    },
+    {
+      "id": "attempt",
+      "from": "gateway",
+      "to": "budget",
+      "y": 250,
+      "label": "attempt + check"
+    },
+    {
+      "id": "budget-ok",
+      "from": "budget",
+      "to": "gateway",
+      "y": 280,
+      "label": "allowed",
+      "variant": "return"
+    },
+    {
+      "id": "evaluate",
+      "from": "gateway",
+      "to": "policy",
+      "y": 310,
+      "label": "evaluate",
+      "variant": "security"
+    },
+    {
+      "id": "decision",
+      "from": "policy",
+      "to": "gateway",
+      "y": 340,
+      "label": "decision",
+      "variant": "return"
+    },
+    {
+      "id": "approval-check",
+      "from": "gateway",
+      "to": "approval",
+      "y": 370,
+      "label": "cached approval?",
+      "variant": "dashed"
+    },
+    {
+      "id": "approval-reply",
+      "from": "approval",
+      "to": "gateway",
+      "y": 400,
+      "label": "approved / denied",
+      "variant": "return"
+    },
+    {
+      "id": "intent",
+      "from": "gateway",
+      "to": "audit",
+      "y": 430,
+      "label": "INTENT write",
+      "variant": "security"
+    },
+    {
+      "id": "reserve",
+      "from": "gateway",
+      "to": "budget",
+      "y": 460,
+      "label": "consumeExecution",
+      "variant": "dashed"
+    },
+    {
+      "id": "execute",
+      "from": "gateway",
+      "to": "executor",
+      "y": 490,
+      "label": "execute canonical path",
+      "variant": "emphasis"
+    },
+    {
+      "id": "output",
+      "from": "executor",
+      "to": "gateway",
+      "y": 520,
+      "label": "output",
+      "variant": "return"
+    },
+    {
+      "id": "postcondition",
+      "from": "gateway",
+      "to": "policy",
+      "y": 550,
+      "label": "postconditions"
+    },
+    {
+      "id": "postcondition-result",
+      "from": "policy",
+      "to": "gateway",
+      "y": 580,
+      "label": "passed / failed",
+      "variant": "return"
+    },
+    {
+      "id": "result-log",
+      "from": "gateway",
+      "to": "audit",
+      "y": 610,
+      "label": "RESULT write",
+      "variant": "security"
+    },
+    {
+      "id": "reply",
+      "from": "gateway",
+      "to": "caller",
+      "y": 640,
+      "label": "result",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Strict logging",
+      "items": [
+        "INTENT is written before any side effect",
+        "A failed INTENT write blocks execution in strict mode",
+        "RESULT carries the same intentHash and may report sideEffects: committed"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Shared decisions",
+      "items": [
+        "decide() and run() share principal, budget and policy resolution",
+        "A decide call records an attempt but never consumes an execution",
+        "An Idempotency-Key replays the stored result before run()"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Detection only",
+      "items": [
+        "Postconditions and path re-resolution report violations after execution",
+        "Optional compensation is best-effort; side effects may remain committed"
+      ]
+    }
+  ]
+}

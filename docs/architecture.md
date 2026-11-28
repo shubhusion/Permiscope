@@ -4,38 +4,11 @@ Permiscope is a **mediated execution layer** that sits between an external syste
 
 ## Overview
 
-```mermaid
-graph TD
-    subgraph "External System"
-        A["🤖 Agent / Script / Workflow"]
-    end
+![Permiscope architecture](./assets/permiscope-architecture.svg)
 
-    subgraph "Permiscope Trust Layer"
-        B[PermiscopeAdapter]
-        C[ExecutionGateway]
-        D[PolicyEngine]
-        E[ApprovalCache]
-        F[AuditLogger]
-    end
-
-    subgraph "Resource Layer"
-        G[File System]
-        H[Shell/Commands]
-        I[APIs]
-    end
-
-    A --> B
-    B --> C
-    C --> D
-    D -->|ALLOW| C
-    D -->|BLOCK| C
-    D -->|REQUIRE_APPROVAL| E
-    E --> C
-    C --> G
-    C --> H
-    C --> I
-    C --> F
-```
+The diagram shows the main path: an agent SDK calls the gateway through an adapter;
+Python and other languages use the HTTP sidecar; MCP and the console are additional
+governed consumers. Credentials travel in request context, never on the `Action`.
 
 ## Components
 
@@ -61,21 +34,40 @@ graph TD
 
 ### AuditLogger
 - **Role**: Immutable record keeper
-- **Responsibility**: Maintains a tamper-evident, hash-chained audit log
+- **Responsibility**: Writes a signed INTENT record before execution and a linked RESULT
+  record afterwards; maintains a tamper-evident hash chain and redacts credentials and
+  sensitive output
 - **Location**: `src/logging/AuditLogger.ts`
+
+### Supporting components
+- **Request context** (`src/core/requestContext.ts`): `AsyncLocalStorage` carrier for the
+  bearer token; `verifiedPrincipalProvider` (`src/auth/verifiedPrincipal.ts`) resolves it
+  to a principal with roles.
+- **BudgetTracker** (`src/gateway/BudgetTracker.ts`): separates attempts from executions
+  and atomically reserves a call just before the side effect.
+- **IdempotencyCache** (`src/gateway/IdempotencyCache.ts`): bounded, TTL'd replay cache
+  keyed by principal and `Idempotency-Key`.
+- **HTTP sidecar** (`src/sidecar/server.ts`): loopback API for language-agnostic clients.
+- **McpGovernor** (`src/adapters/McpGovernor.ts`): governs MCP tool calls.
 
 ## Data Flow
 
-1. **Agent Request**: Agent calls `agent.act(actionName, params)`
-2. **Action Creation**: Adapter wraps request into an `Action` object
-3. **Policy Evaluation**: Gateway asks PolicyEngine for a decision
-4. **Decision Handling**:
-   - `ALLOW`: Proceed to execution
-   - `BLOCK`: Return error to agent
-   - `REQUIRE_APPROVAL`: Check cache or prompt human
-5. **Execution**: Built-in or custom executor performs the action
-6. **Logging**: Result is appended to the audit log with hash chain
-7. **Response**: Result returned to agent
+1. **Request**: caller uses `act()`/`wrap()`, the sidecar, an MCP tool or the console.
+2. **Identity**: gateway resolves a verified principal from request context; the
+   caller-supplied `agentId` is never trusted for identity.
+3. **Budget**: an attempt is recorded and a non-mutating preflight runs; a blocked call
+   does not burn an execution.
+4. **Policy**: `PolicyEngine` applies `when` (skip) and `guard` (deny) predicates plus
+   path/command guardrails; unsafe regexes are rejected when the policy is constructed.
+5. **Approval**: `REQUIRE_APPROVAL` uses the identity-bound, TTL'd approval cache or waits
+   for a human and fails closed if no decision arrives.
+6. **INTENT**: a signed record with the decision and `intentHash` is written before any
+   side effect; strict logging blocks the action if this write fails.
+7. **Execution**: budgets reserve one execution, file paths are re-resolved to their
+   canonical form, and the executor runs. Postconditions detect violations after the
+   fact; they do not undo committed side effects.
+8. **RESULT**: a second signed record with the same `intentHash` records the outcome.
+9. **Response**: the result is returned; an `Idempotency-Key` replay skips steps 2–8.
 
 ## Trust Boundaries
 
@@ -92,3 +84,4 @@ graph TD
 2. **Fail Closed**: Errors in validators or logging fail to BLOCK.
 3. **Immutable Audit**: Hash chain prevents log tampering.
 4. **Human Override**: Sensitive actions require explicit approval.
+5. **Two-Phase Audit**: INTENT precedes side effects; RESULT records the outcome.

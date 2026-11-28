@@ -1,0 +1,117 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Approval lifecycle — v1.2.0",
+    "output": ".archify/lifecycle-approval-20261128-121949/approval-lifecycle.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/shubhusion/permiscope.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "7366244b6fe079236c4cf33fbcfeea9d162ae1b6"
+    }
+  },
+  "mainPath": ["requested", "pending", "approved", "executed"],
+  "states": [
+    {
+      "id": "requested",
+      "type": "start",
+      "label": "Requested",
+      "sublabel": "REQUIRE_APPROVAL",
+      "tag": "gate",
+      "step": "01",
+      "sources": [{ "path": "src/engine/PolicyEngine.ts", "line": 62, "end_line": 75 }]
+    },
+    {
+      "id": "pending",
+      "type": "waiting",
+      "label": "Pending",
+      "sublabel": "authenticated principal",
+      "tag": "PENDING",
+      "step": "02",
+      "sources": [{ "path": "src/gateway/ApprovalCache.ts", "line": 123, "end_line": 142 }]
+    },
+    {
+      "id": "approved",
+      "type": "success",
+      "label": "Approved",
+      "sublabel": "durable decision",
+      "tag": "APPROVED",
+      "step": "03",
+      "sources": [{ "path": "src/gateway/ApprovalCache.ts", "line": 144, "end_line": 165 }]
+    },
+    {
+      "id": "executed",
+      "type": "success",
+      "label": "Executed",
+      "sublabel": "allow + side effect",
+      "tag": "terminal",
+      "step": "04",
+      "sources": [{ "path": "src/gateway/ExecutionGateway.ts", "line": 206, "end_line": 300 }]
+    },
+    {
+      "id": "rejected",
+      "type": "failure",
+      "label": "Rejected",
+      "sublabel": "explicit deny",
+      "tag": "REJECTED",
+      "sources": [{ "path": "src/gateway/ApprovalCache.ts", "line": 167, "end_line": 180 }]
+    },
+    {
+      "id": "expired",
+      "type": "failure",
+      "label": "Expired",
+      "sublabel": "TTL elapsed",
+      "tag": "1 hour default",
+      "sources": [{ "path": "src/gateway/ApprovalCache.ts", "line": 6, "end_line": 7 }, { "path": "src/gateway/ApprovalCache.ts", "line": 86, "end_line": 86 }]
+    },
+    {
+      "id": "blocked",
+      "type": "neutral",
+      "label": "Blocked",
+      "sublabel": "fail closed",
+      "tag": "terminal",
+      "sources": [{ "path": "src/gateway/ExecutionGateway.ts", "line": 131, "end_line": 160 }]
+    }
+  ],
+  "transitions": [
+    { "id": "requested-pending", "from": "requested", "to": "pending", "label": "needs human" },
+    { "id": "requested-executed", "from": "requested", "to": "executed", "label": "cache hit", "variant": "dashed" },
+    { "id": "pending-approved", "from": "pending", "to": "approved", "label": "approved" },
+    { "id": "approved-executed", "from": "approved", "to": "executed", "label": "action runs", "variant": "emphasis" },
+    { "id": "pending-rejected", "from": "pending", "to": "rejected", "label": "rejected", "variant": "security" },
+    { "id": "pending-expired", "from": "pending", "to": "expired", "label": "TTL / no TTY" },
+    { "id": "rejected-blocked", "from": "rejected", "to": "blocked", "label": "denied" },
+    { "id": "expired-blocked", "from": "expired", "to": "blocked", "label": "timed out" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Identity-bound keys",
+      "items": [
+        "Approval keys use the authenticated principal, action name and stable parameters",
+        "A caller claiming another agentId cannot reuse that principal's approval",
+        "Cached approvals skip the wait on a subsequent identical action"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Time limits",
+      "items": [
+        "Approvals expire one hour after the decision",
+        "The gateway's approval timeout is fail-closed with no TTY",
+        "Expired and rejected both end in Blocked"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Durability",
+      "items": [
+        "The approval file is a single-machine JSON store guarded by a lock",
+        "A corrupt cache resets to empty rather than allowing all actions"
+      ]
+    }
+  ]
+}

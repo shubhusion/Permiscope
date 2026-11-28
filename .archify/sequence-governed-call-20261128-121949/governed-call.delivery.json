@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "06ba8ac5-82d8-4372-a7a2-f91e00cb74eb",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "D:\\Github\\Permiscope\\.archify\\sequence-governed-call-20261128-121949\\candidate.json",
+  "output": "D:\\Github\\Permiscope\\.archify\\sequence-governed-call-20261128-121949\\governed-call.html",
+  "specification": {
+    "sha256": "d36bfe08f1987be0112e1f845adcccd7f629abcd696e5fd622fe6e9d99213ea3",
+    "bytes": 6462
+  },
+  "artifact": {
+    "sha256": "6fcaba29940a3fff6a36decf1aa76dd0280a52af330fe4c297d8eb7fa9ee226f",
+    "bytes": 941614
+  }
+}

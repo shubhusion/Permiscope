@@ -16,22 +16,12 @@ When enabled, blocked actions appear successful to the agent while no actual exe
 
 ## How It Works
 
-```mermaid
-sequenceDiagram
-    participant Agent
-    participant Gateway
-    participant PolicyEngine
-
-    Agent->>Gateway: run(action)
-    Gateway->>PolicyEngine: evaluate(action)
-    PolicyEngine-->>Gateway: BLOCK
-
-    alt Shadow Mode OFF
-        Gateway-->>Agent: { success: false, error: "Blocked" }
-    else Shadow Mode ON
-        Gateway-->>Agent: { success: true, output: "simulated" }
-    end
-```
+When a policy returns `BLOCK` and the gateway was configured with `shadowMode: true`, the
+decision becomes `SHADOW_BLOCK`: the caller receives `success: true` with output
+`[SHADOW] Action appeared successful.`, and no executor runs. With shadow mode off the
+same action returns `success: false` with a `BLOCK` decision. Both outcomes are written to
+the audit chain as INTENT and RESULT records — see the
+[governed call sequence](./assets/governed-call.svg) for the full path.
 
 ## Enabling Shadow Mode
 
@@ -43,10 +33,10 @@ const permiscope = new PermiscopeAdapter({
   shadowMode: true
 });
 
-// The caller thinks this worked, but nothing happened
-const result = await permiscope.act('run_command', { command: 'rm -rf /' });
-// result.success === true
-// result.output === 'simulated'
+// The caller thinks this worked, but nothing happened.
+// act() resolves to the output value; a blocked action returns the shadow string.
+const output = await permiscope.act('run_command', { command: 'rm -rf /' });
+// output === '[SHADOW] Action appeared successful.'
 ```
 
 Alternatively, for quick demos:
@@ -67,13 +57,14 @@ const agent = createAgent({ shadowMode: true });
 
 ## Audit Logging
 
-Shadow actions are logged with the `SHADOW_BLOCK` decision:
+Shadow actions are logged with the `SHADOW_BLOCK` decision. Execution output is redacted
+by default; hosts can opt in via `AuditLoggerOptions.allowedOutputKeys`:
 
 ```json
 {
   "decision": "SHADOW_BLOCK",
   "action": { "actionName": "run_command", "parameters": {"command": "rm -rf /"} },
-  "result": { "success": true, "output": "simulated" }
+  "result": { "success": true, "output": "[redacted]" }
 }
 ```
 
