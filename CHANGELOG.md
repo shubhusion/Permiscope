@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture decision records and `AGENTS.md` working rules, including the requirement to cite the relevant ADR (#101).
 - Audit chain verification now streams the log in bounded chunks instead of loading it all (#103).
 - Opt-in segmented audit logs with signed segment heads, atomic rotation and a migration CLI (#105).
+- Roadmap reconciled with v1.1.0/v1.2.0 releases and pending v1.3.0 work (#107).
 
 ## [1.2.0] - 2026-11-27
 
