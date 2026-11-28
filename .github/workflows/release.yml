@@ -19,6 +19,14 @@ jobs:
         with:
           node-version: 24.x
           registry-url: https://registry.npmjs.org
+      - name: Ensure npm supports trusted publishing
+        run: |
+          VERSION=$(npm --version)
+          echo "npm version: $VERSION"
+          if [ "$(printf '%s\n' 11.5.1 "$VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "Upgrading npm for OIDC trusted publishing"
+            npm install -g npm@latest
+          fi
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npm run build
@@ -37,7 +45,7 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/v}"
           VERSION=$(node -p "require('./package.json').version")
           test "$TAG" = "$VERSION" || { echo "Tag $TAG != package version $VERSION"; exit 1; }
+      # Authentication is OIDC via npm Trusted Publishing: no token, no TTY,
+      # no 2FA prompt. The publisher is scoped to shubhusion/Permiscope:release.yml.
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

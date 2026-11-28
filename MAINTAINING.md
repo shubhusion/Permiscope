@@ -113,8 +113,14 @@ runtime, so the gate blocks high/critical only. Recheck before any Jest major ch
 3. Bump the version with `npm version <patch|minor|major>` — strict SemVer.
 4. Write migration notes for intentional behavior changes (fail-closed defaults are a
    common case).
-5. Tag and push; publish with `npm publish --provenance` where supported.
-6. Create a GitHub Release with generated notes and links to the docs and demo.
+5. Tag and push `v<version>`, or dispatch `.github/workflows/release.yml` from `main`.
+   The workflow publishes with `npm publish --provenance` using **npm Trusted
+   Publishing** (OIDC) — no long-lived `NPM_TOKEN` and no 2FA prompt. The npm package
+   must have a trusted publisher configured for `shubhusion` / `Permiscope` /
+   `release.yml` with the **`npm publish`** action enabled; new configurations default
+   to staged publishing only. npm CLI ≥ 11.5.1 and Node ≥ 22.14 are required.
+6. Verify the registry serves the new version and its attestation, then create a GitHub
+   Release with generated notes and links to the docs and demo.
 7. Update `ROADMAP.md` status and README badges.
 
 Version policy: `1.x.y` fixes, `1.y.0` additive features and deprecations, `2.0.0`
