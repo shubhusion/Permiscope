@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 const REPO = 'https://github.com/shubhusion/Permiscope';
 const NPM = 'https://www.npmjs.com/package/permiscope';
 const CONSOLE = '#/console/overview';
+const DOCS = `${REPO}/blob/main/docs/README.md`;
+const HOOKS = `${REPO}/blob/main/docs/hooks.md`;
 
 interface FixtureStats {
   passed: number;
@@ -17,7 +19,10 @@ function useFixtureStats(): FixtureStats | null {
     fetch(`${import.meta.env.BASE_URL}fixtures/demo.json`)
       .then((response) => {
         if (!response.ok) throw new Error(`Fixture unavailable: ${response.status}`);
-        return response.json() as Promise<{ eval: { passed: number; total: number }; chain: { valid: boolean } }>;
+        return response.json() as Promise<{
+          eval: { passed: number; total: number };
+          chain: { valid: boolean };
+        }>;
       })
       .then((fixture) => {
         if (active) {
@@ -45,7 +50,7 @@ const FEATURES = [
   {
     number: '02',
     title: 'Approvals that expire',
-    body: 'Sensitive actions pause for a human. Requests carry identity and TTL, replay safely, and can be decided from the CLI, the dashboard or the sidecar.',
+    body: 'Sensitive actions pause for a human. Grants are single-use and TTL-bound, so one decision never becomes an hour of silent replays.',
   },
   {
     number: '03',
@@ -55,12 +60,33 @@ const FEATURES = [
   {
     number: '04',
     title: 'One gate, many runtimes',
-    body: 'Call the TypeScript adapter, the language-agnostic HTTP sidecar, or the MCP tool wrapper. The same policy engine and audit path govern all three.',
+    body: 'Use the TypeScript adapter, the HTTP sidecar, the MCP wrapper, or native hooks. The same policy engine decides in every runtime.',
   },
   {
     number: '05',
     title: 'Measured, not asserted',
     body: 'A versioned corpus of adversarial actions runs on every CI job. The public numbers on this page are read from the generated fixture, not typed in by hand.',
+  },
+];
+
+const HOSTS = [
+  {
+    name: 'Claude Code',
+    command: 'permiscope hook',
+    note: 'PreToolUse decisions for Bash, Write, Edit and Read.',
+    href: `${HOOKS}#claude-code`,
+  },
+  {
+    name: 'Cursor',
+    command: 'permiscope hook cursor',
+    note: 'Shell, file and MCP hooks with fail-closed verdicts.',
+    href: `${HOOKS}#cursor`,
+  },
+  {
+    name: 'Codex',
+    command: 'permiscope hook codex',
+    note: 'PreToolUse and PermissionRequest; approvals stay native.',
+    href: `${HOOKS}#codex`,
   },
 ];
 
@@ -82,6 +108,7 @@ export default function Landing() {
         </a>
         <nav aria-label="Landing sections">
           <a href="#how">How it works</a>
+          <a href="#hosts">Hooks</a>
           <a href="#start">Quick start</a>
           <a href="#evidence">Evidence</a>
           <a href={CONSOLE}>Console</a>
@@ -92,22 +119,22 @@ export default function Landing() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow">COOPERATIVE GOVERNANCE · NOT A SANDBOX</p>
+            <p className="eyebrow">POLICY · APPROVAL · SIGNED EVIDENCE</p>
             <h1>
               Governed <em>side effects</em><br />for cooperative agents.
             </h1>
             <p className="hero-lede">
-              Permiscope mediates the real-world actions of autonomous agents: verified
-              principals, executable policy, human approval, and a signed audit trail —
-              in one small library you can run today.
+              Permiscope is the gate between your agent and the real world. Every command,
+              file write and API call is checked against policy, paused for a human when it
+              matters, and recorded with signed evidence.
             </p>
             <div className="hero-actions">
-              <a className="btn-primary" href={CONSOLE}>OPEN THE CONSOLE <span aria-hidden="true">→</span></a>
-              <a className="btn-ghost" href={`${REPO}#readme`} target="_blank" rel="noreferrer">READ THE DOCS</a>
+              <a className="btn-primary" href={CONSOLE}>TRY THE LIVE CONSOLE <span aria-hidden="true">→</span></a>
+              <a className="btn-ghost" href="#start">SEE THE QUICK START</a>
             </div>
             <p className="hero-note">
-              Cooperative governance, not a sandbox. It governs what passes through its
-              gateway; it does not isolate a process.{' '}
+              Cooperative governance, not a sandbox: it governs actions routed through its
+              gateway and cannot stop direct <code>fs</code> calls or spawned processes.{' '}
               <a href={`${REPO}/blob/main/docs/adr/0001-cooperative-governance-boundary.md`} target="_blank" rel="noreferrer">See ADR-0001 ↗</a>
             </p>
           </div>
@@ -169,6 +196,25 @@ export default function Landing() {
           </div>
         </section>
 
+        <section className="hosts" id="hosts">
+          <div className="section-head">
+            <p className="eyebrow">NATIVE INTEGRATIONS</p>
+            <h2>Works with the agent you already use.</h2>
+            <p>Three host adapters, one evaluator, one set of decisions. No policy logic is duplicated.</p>
+          </div>
+          <div className="host-grid">
+            {HOSTS.map((host, index) => (
+              <a className={`host-card reveal-${index + 1}`} href={host.href} key={host.name} target="_blank" rel="noreferrer">
+                <span className="host-index">0{index + 1}</span>
+                <h3>{host.name}</h3>
+                <code>{host.command}</code>
+                <p>{host.note}</p>
+                <span className="host-link" aria-hidden="true">SETUP ↗</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
         <section className="quickstart" id="start">
           <div className="quickstart-copy">
             <p className="eyebrow">QUICK START</p>
@@ -201,7 +247,7 @@ const content = await gate.act('run_command', {
           <div className="hero-actions">
             <a className="btn-primary" href={REPO} target="_blank" rel="noreferrer">STAR ON GITHUB <span aria-hidden="true">↗</span></a>
             <a className="btn-ghost" href={NPM} target="_blank" rel="noreferrer">VIEW ON NPM</a>
-            <a className="btn-ghost" href={`${REPO}/blob/main/docs/limitations.md`} target="_blank" rel="noreferrer">LIMITATIONS</a>
+            <a className="btn-ghost" href={`${REPO}/labels/good%20first%20issue`} target="_blank" rel="noreferrer">FIND A FIRST ISSUE</a>
           </div>
         </section>
       </main>
@@ -209,6 +255,8 @@ const content = await gate.act('run_command', {
       <footer className="landing-footer">
         <span>PERMISCOPE · COOPERATIVE GOVERNANCE</span>
         <span>
+          <a href={DOCS} target="_blank" rel="noreferrer">Docs</a>
+          {' · '}
           <a href={`${REPO}/blob/main/SECURITY.md`} target="_blank" rel="noreferrer">Security</a>
           {' · '}
           <a href={`${REPO}/blob/main/docs/adr/README.md`} target="_blank" rel="noreferrer">Decisions</a>
