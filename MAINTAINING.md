@@ -55,18 +55,20 @@ CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 - `npm test` (coverage thresholds: 70% statements, 65% branches, 72% functions, 72% lines)
 - `npm run lint`
 - `npm run eval` (56-case adversarial corpus)
+- `npm run eval:fixture` and `npm run fixture:web`, followed by
+  `git diff --exit-code -- eval/fixtures/rogue-agent.json web/public/fixtures/demo.json`
 - `npm run typecheck:web` and `npm run build:web`
 
 Node 24+ is required for both development and consumption; `engines.node` and CI agree.
-Node 18, 20 and 22 are not tested. `npm run audit:verify` and
-`npm run fixture:web` are available locally; add them to CI before calling them gates.
+Node 18, 20 and 22 are not tested. `npm run audit:verify` is available locally but is
+not yet a CI gate.
 
 Use [docs/migration.md](./docs/migration.md) for upgrade notes and the compatibility
 policy. Deprecations must be announced in `CHANGELOG.md` and survive at least one minor
 release before removal.
 
-Coverage excludes the CLI, package barrel, dashboard glue and scenario scripts;
-those are exercised through smoke tests and are not unit-testable in isolation.
+Coverage excludes the CLI, package barrel and dashboard glue; those are exercised
+through smoke tests. The rogue-agent scenario is covered by `demoIntegrity.test.ts`.
 Do not add them back to the threshold denominator without adding tests.
 
 Dependency policy: `npm audit fix` is applied when non-breaking. Remaining moderate
