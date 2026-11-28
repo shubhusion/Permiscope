@@ -116,7 +116,7 @@ export default function Landing() {
         </nav>
       </header>
 
-      <main>
+      <main id="main" tabIndex={-1}>
         <section className="hero">
           <div className="hero-copy">
             <p className="eyebrow">POLICY · APPROVAL · SIGNED EVIDENCE</p>
@@ -139,7 +139,11 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="hero-visual" aria-label="Example policy decisions">
+          <div
+            className="hero-visual"
+            role="img"
+            aria-label="Example policy decisions: npm test is allowed, writing to /etc/passwd is blocked, and a curl upload is blocked"
+          >
             <div className="scope-card">
               <div className="scope-head">
                 <span>POLICY EVALUATION</span>

@@ -21,7 +21,21 @@ function Root() {
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
-  return console ? <ConsoleApp /> : <Landing />;
+  return (
+    <>
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
+        Skip to main content
+      </a>
+      {console ? <ConsoleApp /> : <Landing />}
+    </>
+  );
 }
 
 const container = document.getElementById('root');

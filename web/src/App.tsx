@@ -409,7 +409,7 @@ export function ConsoleApp() {
       <Head data={data} token={token} setToken={setToken} reload={() => void reload()} />
       <div className="shell">
         <Nav tab={tab} select={selectTab} />
-        <main className="main">
+        <main className="main" id="main" tabIndex={-1}>
           {error && <div className="notice" role="alert">{error}</div>}
           {!data ? (
             <p className="loading">Loading governance data…</p>

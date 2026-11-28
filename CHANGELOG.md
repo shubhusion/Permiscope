@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- WCAG 2.2 AA gate: skip link, visible focus, sticky-header focus margins, larger targets and a Playwright+axe scan of both web routes in CI and Release workflows. See [ADR-0024](./docs/adr/0024-accessibility-gate.md) (#141).
 - Landing page refresh: sharper hero copy, native Claude Code/Cursor/Codex hook section, community CTA and fresh SEO metadata (#138).
 - Documentation index, v2.1.0 launch post and copy-pasteable hook examples for Claude Code, Cursor and Codex; curated good-first issues for newcomers (#135).
 
