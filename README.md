@@ -94,6 +94,10 @@ npm install permiscope
 > Requires Node.js 24+. The package ships both CommonJS (`require`) and ESM (`import`)
 > builds, verified by `npm run check:package`. The Python client is installable from
 > a clone with `pip install .`.
+>
+> **Upgrading from 1.x?** Version 2.0.0 changes the default command policy, host
+> credential requirements and approval semantics. Read the
+> [migration guide](./docs/migration.md#1x--20) first.
 
 ### ⚡ 30-Second Quick Start
 
