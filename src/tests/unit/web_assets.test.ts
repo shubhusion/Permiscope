@@ -21,4 +21,14 @@ describeBuilt('built web assets', () => {
   test('the demo fixture is included in the build', () => {
     expect(fs.existsSync(path.join(webDir, 'fixtures/demo.json'))).toBe(true);
   });
+
+  test('the built bundle contains the landing page', () => {
+    const assetsDir = path.join(webDir, 'assets');
+    const bundles = fs.readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
+    const content = bundles
+      .map((name) => fs.readFileSync(path.join(assetsDir, name), 'utf-8'))
+      .join('');
+    expect(content).toContain('Governed');
+    expect(content).toContain('OPEN THE CONSOLE');
+  });
 });

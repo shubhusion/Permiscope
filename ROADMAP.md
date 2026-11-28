@@ -69,6 +69,7 @@ These are on `main` but not yet released.
 | #113 | Honest demo fixtures with a verified chain and CI drift gate |
 | #115 | Fail-closed dashboard and sidecar defaults ([ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md)) |
 | #117 | Segmented audit crash recovery, atomic migration and read-only verify |
+| #119 | Project landing page at the site root |
 
 ## Next
 

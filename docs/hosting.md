@@ -1,6 +1,10 @@
 # Hosting the demo console
 
-The web console in `web/` is a static React app. It has two modes:
+The web app in `web/` is a static React app with two routes: the landing page at the
+site root and the governance console at `#/console/*`. Legacy `#/logs`-style hashes
+still open the console.
+
+The console has two data modes:
 
 - **Demo mode** (default): reads `web/public/fixtures/demo.json`, generated from the
   eval corpus and rogue-agent scenario. Approve/Reject are disabled and no backend is
@@ -8,6 +12,9 @@ The web console in `web/` is a static React app. It has two modes:
 - **Live mode**: set `VITE_DEMO_MODE=false` and point `VITE_API_BASE` at the local
   Express dashboard (`http://localhost:3000/api`). A bearer token entered in the
   header is held in memory only and is required before decisions can be made.
+
+The landing page reads the same fixture for its eval and chain figures, so the public
+claims are generated from the code rather than maintained by hand.
 
 ## Local development
 

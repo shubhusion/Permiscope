@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A project landing page at the site root with live eval/chain figures, quick start and links to the repository, npm package and docs. The console moves to `#/console/*`; older hashes keep working (#119).
+
 ### Security
 
 - Dashboard API requests are rejected with 401 when no bearer token is configured; the dashboard and sidecar now require a signed, strict audit log and offer explicit development opt-outs. See [ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md) (#115).
