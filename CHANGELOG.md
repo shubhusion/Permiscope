@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made the approval TTL regression test deterministic on loaded CI runners (#93).
 - Split JWT verification into decode/signature/claims/principal helpers; no behavior change (#95).
 - Cleared all npm advisories with patched minimatch/glob overrides; CI and workflows now use Actions v6 (#97).
+- File-backed shared budget store with atomic compare-and-set and fail-closed corruption handling (#99).
 
 ## [1.2.0] - 2026-11-27
 

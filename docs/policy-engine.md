@@ -233,10 +233,14 @@ is deliberate:
 Results include `budgetRemaining`. `BudgetTracker` also exposes `snapshotFor()` with
 separate `attempts` and `executed` counters.
 
-By default budgets are in-process and single-machine. For distributed deployments,
-pass a `BudgetStore` implementing atomic `compareAndSet` per principal (for example a
-Redis WATCH/MULTI or a versioned database row) as the tracker's second constructor
-argument; all trackers sharing that store share the budget.
+By default budgets are in-process. For multiple sidecar processes on one machine, pass a
+`FileBudgetStore` (from `permiscope`) as the tracker's second constructor argument, or
+`budgetStore` to `createSidecar`. It uses `proper-lockfile` for atomic `compareAndSet` and
+fails closed if the file is corrupt.
+
+For machines in different hosts, supply your own `BudgetStore` with an atomic
+`compareAndSet` per principal (for example Redis WATCH/MULTI or a versioned database
+row). All trackers sharing a store share the budget.
 
 ## Debugging
 

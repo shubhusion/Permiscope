@@ -7,6 +7,7 @@ import { ExecutionGateway, GatewayOptions, ActionExecutor } from '../gateway/Exe
 import { Action, Policy } from '../core/types';
 import { withRequestContext } from '../core/requestContext';
 import { IdempotencyCache } from '../gateway/IdempotencyCache';
+import { BudgetStore } from '../gateway/BudgetTracker';
 
 const ActionInputSchema = z.object({
   actionName: z.string().min(1),
@@ -25,6 +26,8 @@ export interface SidecarOptions {
   principalId?: string;
   customExecutors?: Record<string, ActionExecutor>;
   gatewayOptions?: Partial<GatewayOptions>;
+  /** Optional budget backend shared by multiple sidecar processes. */
+  budgetStore?: BudgetStore;
   allowRemote?: boolean;
   /** Optional shared replay cache; defaults to a bounded in-process cache. */
   idempotencyCache?: IdempotencyCache;
@@ -83,6 +86,7 @@ export function createSidecar(options: SidecarOptions): {
     options.customExecutors ?? {},
     {
       ...options.gatewayOptions,
+      ...(options.budgetStore ? { budgetStore: options.budgetStore } : {}),
       defaultPrincipalId:
         options.principalId ?? options.gatewayOptions?.defaultPrincipalId ?? 'sidecar',
       // A service has no TTY: never wait for an interactive human.
