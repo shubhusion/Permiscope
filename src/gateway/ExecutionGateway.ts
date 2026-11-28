@@ -2,7 +2,7 @@ import * as readline from 'readline';
 import * as fs from 'fs';
 import { createHash } from 'crypto';
 import { spawn } from 'child_process';
-import { Action, PermissionDecision } from '../core/types';
+import { Action, PermissionDecision, Postcondition } from '../core/types';
 import { parseCommand } from '../engine/commandPolicy';
 import { resolveGuardedPath } from '../engine/pathGuard';
 import { PolicyEngine } from '../engine/PolicyEngine';
@@ -42,6 +42,15 @@ export interface GatewayResult {
   compensated?: boolean;
   /** True when this result came from an idempotency replay, not a fresh execution. */
   replayed?: boolean;
+}
+
+interface ExecutionOutcome {
+  success: boolean;
+  output: any;
+  error?: string;
+  reasonCode?: string;
+  executed: boolean;
+  compensated: boolean;
 }
 
 export interface GatewayOptions {
@@ -209,16 +218,7 @@ export class ExecutionGateway {
     executor?: ActionExecutor,
   ): Promise<GatewayResult> {
     const prepared = await this.decideInternal(action, dryRun);
-    const {
-      governedAction,
-      identity,
-      decision: preparedDecision,
-      budgetExceeded,
-      shadow,
-    } = prepared;
-    let budgetRemaining = prepared.budgetRemaining;
-
-    if (budgetExceeded) {
+    if (prepared.budgetExceeded) {
       return {
         decision: 'BLOCK',
         success: false,
@@ -228,140 +228,214 @@ export class ExecutionGateway {
       };
     }
 
-    let decision = preparedDecision;
-    let reasonCode = prepared.reasonCode;
-    const matchedScope = prepared.matchedScope;
-    const remediation = prepared.remediation;
-    let success = false;
-    let output = null;
-    let error = undefined;
-    let executed = false;
-    let compensated = false;
+    const { governedAction, identity, shadow } = prepared;
+    let { decision, reasonCode } = prepared;
+    let error: string | undefined;
 
-    // Re-resolve file paths immediately before execution and use the canonical
-    // path for the actual I/O. This closes the gap between the policy-time
-    // realpath check and the open() performed by the executor.
-    let actionForExecution = governedAction;
-    if (
-      decision === 'ALLOW' &&
-      !dryRun &&
-      (governedAction.actionName === 'read_file' || governedAction.actionName === 'write_file')
-    ) {
-      const roots = Array.from(
-        new Set(
-          this.policyEngine.scopesFor(governedAction).flatMap((scope) => scope.allowedPaths ?? []),
-        ),
-      );
-      const guarded = resolveGuardedPath(governedAction.parameters.path, roots);
-      if (!guarded.ok) {
-        decision = 'BLOCK';
-        reasonCode = 'GUARDRAIL_PATH';
-        error = guarded.reason;
-      } else {
-        actionForExecution = {
-          ...governedAction,
-          parameters: { ...governedAction.parameters, path: guarded.path },
-        };
-      }
+    // Re-resolve immediately before use and open the canonical path, closing
+    // the gap between the policy-time realpath check and the executor's open().
+    const canonical = this.guardCanonicalPath(governedAction, decision, dryRun);
+    const actionForExecution = canonical.action;
+    decision = canonical.decision;
+    if (canonical.reasonCode) reasonCode = canonical.reasonCode;
+    error = canonical.error;
+
+    // INTENT is written before any side effect; strict logging blocks here.
+    const intentHash = await this.writeIntent(identity, governedAction, decision);
+
+    // Reserve only after INTENT is durable; another caller may have used the
+    // last slot in between.
+    let budgetRemaining = prepared.budgetRemaining;
+    const reservation = await this.reserveExecution(identity, decision, dryRun);
+    if (reservation.remaining !== undefined) budgetRemaining = reservation.remaining;
+    if (!reservation.allowed) {
+      decision = 'BLOCK';
+      reasonCode = 'BUDGET_EXCEEDED';
+      error = reservation.error;
     }
 
-    // Bind the eventual result to the decision made here. The INTENT record is
-    // written before any side effect so strict logging can genuinely block it.
+    const executedOutcome = await this.executeOutcome(
+      decision,
+      shadow,
+      dryRun,
+      actionForExecution,
+      executor,
+      error,
+    );
+    if (executedOutcome.reasonCode) reasonCode = executedOutcome.reasonCode;
+
+    // Await the record: a detached promise both loses strict-mode failures and
+    // leaves a lockfile handle open when a test or process exits.
+    await this.writeResult(identity, governedAction, decision, intentHash, executedOutcome, dryRun);
+
+    return {
+      decision,
+      success: executedOutcome.success,
+      sideEffects: executedOutcome.executed ? 'committed' : 'none',
+      output: executedOutcome.output,
+      error: executedOutcome.error,
+      reasonCode,
+      matchedScope: prepared.matchedScope,
+      remediation: prepared.remediation,
+      budgetRemaining,
+      ...(executedOutcome.compensated ? { compensated: true } : {}),
+    };
+  }
+
+  private guardCanonicalPath(
+    action: Action,
+    decision: PermissionDecision,
+    dryRun: boolean,
+  ): { action: Action; decision: PermissionDecision; reasonCode?: string; error?: string } {
+    const isFileAction = action.actionName === 'read_file' || action.actionName === 'write_file';
+    if (decision !== 'ALLOW' || dryRun || !isFileAction) return { action, decision };
+
+    const roots = Array.from(
+      new Set(this.policyEngine.scopesFor(action).flatMap((scope) => scope.allowedPaths ?? [])),
+    );
+    const guarded = resolveGuardedPath(action.parameters.path, roots);
+    if (!guarded.ok) {
+      return { action, decision: 'BLOCK', reasonCode: 'GUARDRAIL_PATH', error: guarded.reason };
+    }
+    return {
+      action: { ...action, parameters: { ...action.parameters, path: guarded.path } },
+      decision,
+    };
+  }
+
+  private async writeIntent(
+    identity: string,
+    action: Action,
+    decision: PermissionDecision,
+  ): Promise<string> {
     const intentHash = createHash('sha256')
-      .update(JSON.stringify({ action: governedAction, decision, principal: identity }))
+      .update(JSON.stringify({ action, decision, principal: identity }))
       .digest('hex');
     await this.auditLogger.log({
       timestamp: new Date().toISOString(),
       agentId: identity,
-      action: governedAction,
+      action,
       decision,
       phase: 'INTENT',
       intentHash,
       result: { planned: true },
     });
+    return intentHash;
+  }
 
-    // Reserve the execution only after the intent is durably recorded. A
-    // concurrent caller may have exhausted the budget in between.
-    if (!dryRun && decision === 'ALLOW' && this.budgetTracker) {
-      const reserved = await this.budgetTracker.consumeExecution(identity);
-      budgetRemaining = reserved.remaining;
-      if (!reserved.allowed) {
-        decision = 'BLOCK';
-        reasonCode = 'BUDGET_EXCEEDED';
-        error = 'Principal budget exceeded';
-      }
+  private async reserveExecution(
+    identity: string,
+    decision: PermissionDecision,
+    dryRun: boolean,
+  ): Promise<{ allowed: boolean; remaining?: BudgetRemaining; error?: string }> {
+    if (dryRun || decision !== 'ALLOW' || !this.budgetTracker) return { allowed: true };
+    const reserved = await this.budgetTracker.consumeExecution(identity);
+    if (!reserved.allowed) {
+      return { allowed: false, remaining: reserved.remaining, error: 'Principal budget exceeded' };
     }
+    return { allowed: true, remaining: reserved.remaining };
+  }
 
+  private executeOutcome(
+    decision: PermissionDecision,
+    shadow: boolean,
+    dryRun: boolean,
+    action: Action,
+    executor?: ActionExecutor,
+    blockError?: string,
+  ): Promise<ExecutionOutcome> {
     if (shadow) {
-      success = true;
-      output = '[SHADOW] Action appeared successful.';
-    } else if (decision === 'ALLOW') {
-      if (dryRun) {
-        success = true;
-      } else {
-        try {
-          executed = true;
-          output = await this.executeAction(actionForExecution, executor);
-          success = true;
+      return Promise.resolve({
+        success: true,
+        output: '[SHADOW] Action appeared successful.',
+        executed: false,
+        compensated: false,
+      });
+    }
+    if (decision === 'ALLOW' && dryRun) {
+      return Promise.resolve({ success: true, output: null, executed: false, compensated: false });
+    }
+    if (decision !== 'ALLOW') {
+      return Promise.resolve({
+        success: false,
+        output: null,
+        error: blockError,
+        executed: false,
+        compensated: false,
+      });
+    }
+    return this.executeWithPostconditions(action, executor);
+  }
 
-          for (const scope of this.policyEngine.scopesFor(actionForExecution)) {
-            for (const postcondition of scope.postconditions ?? []) {
-              let passed = false;
-              try {
-                passed = await postcondition.check(actionForExecution, output);
-              } catch {
-                passed = false;
-              }
-              if (!passed) {
-                success = false;
-                error = `Postcondition failed: ${postcondition.description ?? 'check'}`;
-                reasonCode = 'POSTCONDITION_FAILED';
-                if (postcondition.compensate) {
-                  try {
-                    await postcondition.compensate(actionForExecution, output);
-                    compensated = true;
-                  } catch (compensationError: any) {
-                    error += `; compensation failed: ${compensationError.message}`;
-                  }
-                }
-                break;
-              }
-            }
-            if (!success) break;
-          }
-        } catch (e: any) {
-          success = false;
-          error = e.message;
+  private async executeWithPostconditions(
+    action: Action,
+    executor?: ActionExecutor,
+  ): Promise<ExecutionOutcome> {
+    try {
+      const output = await this.executeAction(action, executor);
+      const failed = await this.findFailedPostcondition(action, output);
+      if (!failed) {
+        return { success: true, output, executed: true, compensated: false };
+      }
+
+      let error = `Postcondition failed: ${failed.description ?? 'check'}`;
+      let compensated = false;
+      if (failed.compensate) {
+        try {
+          await failed.compensate(action, output);
+          compensated = true;
+        } catch (compensationError: any) {
+          error += `; compensation failed: ${compensationError.message}`;
         }
       }
-    } else {
-      success = false;
+      return {
+        success: false,
+        output,
+        error,
+        reasonCode: 'POSTCONDITION_FAILED',
+        executed: true,
+        compensated,
+      };
+    } catch (e: any) {
+      return { success: false, output: null, error: e.message, executed: true, compensated: false };
     }
+  }
 
-    // Await the record: a detached promise both loses strict-mode failures and
-    // leaves a lockfile handle open when a test or process exits.
+  private async findFailedPostcondition(
+    action: Action,
+    output: any,
+  ): Promise<Postcondition | undefined> {
+    for (const scope of this.policyEngine.scopesFor(action)) {
+      for (const postcondition of scope.postconditions ?? []) {
+        let passed = false;
+        try {
+          passed = await postcondition.check(action, output);
+        } catch {
+          passed = false;
+        }
+        if (!passed) return postcondition;
+      }
+    }
+    return undefined;
+  }
+
+  private async writeResult(
+    identity: string,
+    action: Action,
+    decision: PermissionDecision,
+    intentHash: string,
+    outcome: ExecutionOutcome,
+    dryRun: boolean,
+  ): Promise<void> {
     await this.auditLogger.log({
       timestamp: new Date().toISOString(),
       agentId: identity,
-      action: governedAction,
+      action,
       decision,
       phase: 'RESULT',
       intentHash,
-      result: { success, output, error, dryRun },
+      result: { success: outcome.success, output: outcome.output, error: outcome.error, dryRun },
     });
-
-    return {
-      decision,
-      success,
-      sideEffects: executed ? 'committed' : 'none',
-      output,
-      error,
-      reasonCode,
-      matchedScope,
-      remediation,
-      budgetRemaining,
-      ...(compensated ? { compensated: true } : {}),
-    };
   }
 
   private async requestApproval(action: Action, identity: string): Promise<boolean> {

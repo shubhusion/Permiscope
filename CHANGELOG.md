@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Split `ExecutionGateway.run` into focused helpers; no behavior change (#93).
+
 ## [1.2.0] - 2026-11-27
 
 This release fixes five security defects found in a self-audit before publishing:
