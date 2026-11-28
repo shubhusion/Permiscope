@@ -3,6 +3,7 @@ import { AddressInfo } from 'net';
 
 process.env.PERMISCOPE_DASHBOARD_PORT = '3210';
 process.env.PERMISCOPE_DASHBOARD_TOKEN = 'cors-token';
+process.env.PERMISCOPE_AUDIT_SECRET = 'cors-audit-key';
 
 describe('dashboard CORS', () => {
   let server: Server;

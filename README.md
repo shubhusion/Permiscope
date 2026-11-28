@@ -111,12 +111,14 @@ Permiscope is designed for high-trust environments. Use these environment variab
 
 | Variable | Importance | Description |
 |----------|------------|-------------|
-| `PERMISCOPE_AUDIT_SECRET` | **Critical** | Secret key for HMAC-SHA256 audit log signing. |
+| `PERMISCOPE_AUDIT_SECRET` | **Critical** | Secret key for HMAC-SHA256 audit log signing. Hosts refuse to start without it (ADR-0020). |
 | `PERMISCOPE_AUDIT_KEY_ID` | Medium | Key ID written into entries; change it to rotate keys. |
 | `PERMISCOPE_AUDIT_KEY_RING` | Medium | JSON map of key ID → secret so old entries stay verifiable after rotation. |
-| `PERMISCOPE_DASHBOARD_TOKEN` | **High** | Bearer token required to update approvals via the API/Dashboard. |
+| `PERMISCOPE_DASHBOARD_TOKEN` | **High** | Bearer token required for every dashboard API route; without it, requests are rejected. |
 | `PERMISCOPE_SIDECAR_TOKEN` | **High** | Bearer token required by the language-agnostic HTTP sidecar. |
-| `PERMISCOPE_STRICT_LOGGING` | Medium | Set to `true` to block actions if the audit log cannot be written. |
+| `PERMISCOPE_STRICT_LOGGING` | Medium | Set to `true` to block actions if the audit log cannot be written. Hosts enable this. |
+| `PERMISCOPE_DASHBOARD_ALLOW_ANONYMOUS` | Dev only | Explicit opt-out of dashboard authentication for local development. |
+| `PERMISCOPE_ALLOW_UNSIGNED_AUDIT` | Dev only | Disables the host signing requirement for local development; strict logging stays on. |
 
 ### 🧪 Security evaluation
 

@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Dashboard API requests are rejected with 401 when no bearer token is configured; the dashboard and sidecar now require a signed, strict audit log and offer explicit development opt-outs. See [ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md) (#115).
+- The default `run_command` policy now uses an executable allowlist instead of a denylist. Commands such as `rm -r -f /`, `node -e`, `curl` uploads and `python -m http.server` were previously allowed; they now block unless a caller opts in. Add `allowedCommands` to a custom scope to widen it. See [ADR-0019](./docs/adr/0019-default-command-allowlist.md) (#111).
+
 ### Fixed
 
 - The public demo no longer fabricates results: per-category eval counts come from real failures and the audit chain is verified before the fixture is generated. `eval:fixture` and `fixture:web` now run in CI with a drift gate; host-level shadow mode is used for the rogue-agent scenario (#113).
-
-### Security
-
-- The default `run_command` policy now uses an executable allowlist instead of a denylist. Commands such as `rm -r -f /`, `node -e`, `curl` uploads and `python -m http.server` were previously allowed; they now block unless a caller opts in. Add `allowedCommands` to a custom scope to widen it. See [ADR-0019](./docs/adr/0019-default-command-allowlist.md) (#111).
 
 ### Changed
 
