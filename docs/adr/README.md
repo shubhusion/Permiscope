@@ -27,4 +27,4 @@ description. If a material decision has no ADR, add one in the same PR. See
 | [0014](./0014-dual-cjs-esm-package.md) | Dual CJS/ESM package, Node 24+ | Accepted |
 | [0015](./0015-fixture-backed-demo.md) | One console, two data sources, read-only demo | Accepted |
 | [0016](./0016-trusted-publishing.md) | npm Trusted Publishing with provenance | Accepted |
-| [0017](./0017-segmented-audit-log.md) | Segmented audit log and streaming verification | Proposed |
+| [0017](./0017-segmented-audit-log.md) | Segmented audit log and streaming verification | Accepted |

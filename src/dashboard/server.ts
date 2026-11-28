@@ -35,7 +35,8 @@ const staticDir = fs.existsSync(webDist) ? webDist : path.join(__dirname, 'publi
 app.use(express.static(staticDir));
 
 const approvalCache = new ApprovalCache();
-const auditLogger = new AuditLogger();
+const segmented = fs.existsSync(path.join('./logs', 'audit', 'manifest.json'));
+const auditLogger = new AuditLogger('./logs', false, { segmented });
 const logPath = './logs/audit.log';
 
 // Authentication middleware for API routes
@@ -71,12 +72,14 @@ function redact(params: Record<string, any>): Record<string, string> {
 // API: Audit chain status
 app.get('/api/chain', (_req, res) => {
   const result = auditLogger.verifyChain();
-  const entries = fs.existsSync(logPath)
-    ? fs
-        .readFileSync(logPath, 'utf-8')
-        .split('\n')
-        .filter((line) => line.trim() !== '').length
-    : 0;
+  const entries = segmented
+    ? auditLogger.readEntries().length
+    : fs.existsSync(logPath)
+      ? fs
+          .readFileSync(logPath, 'utf-8')
+          .split('\n')
+          .filter((line) => line.trim() !== '').length
+      : 0;
   res.json({
     valid: result.valid,
     errors: result.errors,
@@ -87,27 +90,32 @@ app.get('/api/chain', (_req, res) => {
 
 // API: Get Logs (authenticated). Parameter values are redacted unless raw=1.
 app.get('/api/logs', (req, res) => {
-  if (!fs.existsSync(logPath)) {
+  if (!segmented && !fs.existsSync(logPath)) {
     return res.json([]);
   }
 
   try {
-    const fileContent = fs.readFileSync(logPath, 'utf-8');
-    const logs = fileContent
-      .split('\n')
-      .filter((line) => line.trim() !== '')
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      })
-      .filter((l) => l !== null)
-      // INTENT records are an internal pre-execution marker; the console shows
-      // the completed RESULT for each action. Use the audit log for raw access.
-      .filter((l) => l.phase !== 'INTENT')
-      .reverse(); // Newest first
+    const logs = segmented
+      ? auditLogger
+          .readEntries()
+          .filter((entry) => entry.phase !== 'INTENT')
+          .reverse()
+      : fs
+          .readFileSync(logPath, 'utf-8')
+          .split('\n')
+          .filter((line) => line.trim() !== '')
+          .map((line) => {
+            try {
+              return JSON.parse(line);
+            } catch {
+              return null;
+            }
+          })
+          .filter((l) => l !== null)
+          // INTENT records are an internal pre-execution marker; the console shows
+          // the completed RESULT for each action. Use the audit log for raw access.
+          .filter((l) => l.phase !== 'INTENT')
+          .reverse(); // Newest first
 
     for (const entry of logs) {
       if (req.query.raw === '1') {

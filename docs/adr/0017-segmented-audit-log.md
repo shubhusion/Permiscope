@@ -1,6 +1,6 @@
 # 17. Segmented audit log and streaming verification
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-28
 
 ## Context
