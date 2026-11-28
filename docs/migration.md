@@ -1,5 +1,17 @@
 # Migration guide
 
+## 1.x → 2.0
+
+Version 2.0.0 contains breaking changes. Review them before upgrading from any 1.x release.
+
+| Change | What to do |
+|---|---|
+| The default `run_command` policy is an executable allowlist | `defaultPolicy` now allows only `echo`, `pwd`, `git status`, `git diff`, `git log`, `git show`, `git rev-parse` and `npm test`. Add an `allowedCommands` list to your own scope for anything else, or provide your own policy. `undefined` keeps the old unrestricted behavior for custom policies. See [ADR-0019](./adr/0019-default-command-allowlist.md). |
+| Dashboard API rejects requests without a token | Set `PERMISCOPE_DASHBOARD_TOKEN`. For local-only development set `PERMISCOPE_DASHBOARD_ALLOW_ANONYMOUS=true` explicitly. See [ADR-0020](./adr/0020-fail-closed-host-defaults.md). |
+| Dashboard and sidecar require a signed, strict audit log | Set `PERMISCOPE_AUDIT_SECRET`. For local-only development set `PERMISCOPE_ALLOW_UNSIGNED_AUDIT=true`. A caller-supplied `auditLogger` is still respected. |
+| Approvals are single-use and pending requests expire | A grant authorizes one governed action; request again for repeats. Stale pending entries are removed. See [ADR-0022](./adr/0022-single-use-approvals.md). |
+| The site root is a landing page | The governance console is now at `#/console/*`. Old `#/logs`-style hashes still open the console; update bookmarks and links. |
+
 ## 1.0.x → 1.1.x and later
 
 v1.1.0 introduced deliberate fail-closed behavior changes. Review these before upgrading.
@@ -16,10 +28,6 @@ v1.1.0 introduced deliberate fail-closed behavior changes. Review these before u
 | Credentials are no longer an `Action` field | Remove `token` from constructed actions. Supply it via `withRequestContext({ token }, () => ...)` from `permiscope` (or rely on the sidecar, which does this for you). `verifiedPrincipalProvider` reads the token from context. |
 | `validator: false` skips a scope rather than denying | If you used `validator` as a deny rule, replace it with `guard` (false denies). Use `when` for applicability (false skips). The legacy field keeps its old behavior, so no immediate change is required for working policies. |
 | Unsafe command regexes now throw at startup | Patterns rejected by `safe-regex` (or with a quantified alternation group) previously logged a warning and were skipped. Replace them with a safe, equivalent pattern. |
-| Approvals are single-use and pending requests expire | A grant authorizes one governed action; request again for repeats. Stale pending entries are removed. See [ADR-0022](./adr/0022-single-use-approvals.md). |
-| Dashboard API rejects requests without a token | Set `PERMISCOPE_DASHBOARD_TOKEN`. For local-only development set `PERMISCOPE_DASHBOARD_ALLOW_ANONYMOUS=true` explicitly. See [ADR-0020](./adr/0020-fail-closed-host-defaults.md). |
-| Dashboard and sidecar require a signed, strict audit log | Set `PERMISCOPE_AUDIT_SECRET`. For local-only development set `PERMISCOPE_ALLOW_UNSIGNED_AUDIT=true`. A caller-supplied `auditLogger` is still respected. |
-| The default `run_command` policy is an executable allowlist | `defaultPolicy` now allows only `echo`, `pwd`, `git status`, `git diff`, `git log`, `git show`, `git rev-parse` and `npm test`. Add an `allowedCommands` list to your own scope for anything else, or provide your own policy. `undefined` keeps the old unrestricted behavior for custom policies. See [ADR-0019](./adr/0019-default-command-allowlist.md). |
 | Segmented audit storage is opt-in | No change required. To adopt it, set `AuditLoggerOptions.segmented` and migrate existing logs with `permiscope audit migrate`. Legacy single-file logs keep verifying. |
 
 Additive APIs introduced after 1.1.0 (`evaluateDetailed`, budgets, postconditions,

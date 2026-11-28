@@ -1,6 +1,6 @@
 # Roadmap
 
-**Status:** v1.1.0 and v1.2.0 released · v1.3.0 work is unreleased on `main` · alpha
+**Status:** v1.1.0, v1.2.0 and v2.0.0 released · alpha
 [![CI](https://github.com/shubhusion/Permiscope/actions/workflows/ci.yml/badge.svg)](https://github.com/shubhusion/Permiscope/actions/workflows/ci.yml)
 **[Live demo →](https://shubhusion.github.io/Permiscope/)** ·
 [Eval corpus](./eval/cases.json) · [Security policy](./SECURITY.md) ·
@@ -48,9 +48,9 @@ Published to npm with provenance on 2026-11-28.
 | #74 | Configurable dashboard CORS; ignored `_agentId` removed |
 | #75 | Documentation drift and sidecar bind-error handling |
 
-## Merged after v1.2.0 — targets v1.3.0
+## Shipped in v2.0.0
 
-These are on `main` but not yet released.
+This is a breaking release; see the [migration guide](./docs/migration.md#1x--20).
 
 | Issue | Delivered |
 |---|---|

@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---|---|
-| 1.2.x | ✅ Current release line |
+| 2.0.x | ✅ Current release line |
+| 1.2.x | ⚠️ Best-effort, no published backports |
 | 1.1.x | ⚠️ Best-effort, no published backports |
 | 1.0.x | ❌ |
 | < 1.0 | ❌ |

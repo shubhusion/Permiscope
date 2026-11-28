@@ -7,20 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-28
+
+### Breaking Changes
+
+- The default `run_command` policy now uses an executable allowlist instead of a denylist. Commands such as `rm -r -f /`, `node -e`, `curl` uploads and `python -m http.server` were previously allowed; they now block unless a caller opts in. Add `allowedCommands` to a custom scope to widen it. See [ADR-0019](./docs/adr/0019-default-command-allowlist.md) (#111).
+- Dashboard API requests are rejected with 401 when no bearer token is configured; the dashboard and sidecar now require a signed, strict audit log and offer explicit development opt-outs. See [ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md) (#115).
+- Approval grants are single-use, pending requests expire, and a governed action consumes its grant once (dry runs do not). See [ADR-0022](./docs/adr/0022-single-use-approvals.md) (#125).
+- The public site root is now a landing page; the governance console lives at `#/console/*`. Older `#/logs`-style hashes still open the console (#119).
+
+See the [migration guide](./docs/migration.md#1x--20) for upgrade steps.
+
 ### Added
 
 - `permiscope hook` maps Claude Code PreToolUse calls to the existing policy engine, returning `allow`/`deny`/`ask` with fail-closed behavior for unknown tools and malformed input. See [ADR-0021](./docs/adr/0021-native-claude-hook.md) and [hooks docs](./docs/hooks.md) (#123).
 - Tailored bug/feature issue templates, an issue-template config, and a first-contribution path in `CONTRIBUTING.md`; refreshed PR checklist, security policy and README contributor links (#121).
-- A project landing page at the site root with live eval/chain figures, quick start and links to the repository, npm package and docs. The console moves to `#/console/*`; older hashes keep working (#119).
-
-### Security
-
-- Dashboard API requests are rejected with 401 when no bearer token is configured; the dashboard and sidecar now require a signed, strict audit log and offer explicit development opt-outs. See [ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md) (#115).
-- The default `run_command` policy now uses an executable allowlist instead of a denylist. Commands such as `rm -r -f /`, `node -e`, `curl` uploads and `python -m http.server` were previously allowed; they now block unless a caller opts in. Add `allowedCommands` to a custom scope to widen it. See [ADR-0019](./docs/adr/0019-default-command-allowlist.md) (#111).
 
 ### Fixed
 
-- Approval grants are now single-use, pending requests expire, and a governed action consumes its grant once (dry runs do not). See [ADR-0022](./docs/adr/0022-single-use-approvals.md) (#125).
 - Segmented audit recovery reconciles a head that is ahead of the manifest after a crash; migration writes atomically, refuses partial targets and honors the environment key ring; `permiscope verify` is read-only and rejects flag-like targets (#117).
 - The public demo no longer fabricates results: per-category eval counts come from real failures and the audit chain is verified before the fixture is generated. `eval:fixture` and `fixture:web` now run in CI with a drift gate; host-level shadow mode is used for the rogue-agent scenario (#113).
 
@@ -131,6 +135,7 @@ v1.1.0 fixes (the registry was still serving the vulnerable 1.0.2).
   catch it. (#19)
 - GitHub Pages demo blank page caused by a case-mismatched asset base path. (#24)
 
-[Unreleased]: https://github.com/shubhusion/Permiscope/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/shubhusion/Permiscope/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/shubhusion/Permiscope/releases/tag/v2.0.0
 [1.2.0]: https://github.com/shubhusion/Permiscope/releases/tag/v1.2.0
 [1.1.0]: https://github.com/shubhusion/Permiscope/releases/tag/v1.1.0
