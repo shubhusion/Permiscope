@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash, createHmac } from 'crypto';
+import { StringDecoder } from 'string_decoder';
 import * as lockfile from 'proper-lockfile';
 import { AuditLogEntry } from '../core/types';
 
@@ -219,55 +220,84 @@ export class AuditLogger {
     }
   }
 
-  verifyChain(): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    const lines = this.readLines();
+  /** Streams the log in bounded chunks; multi-byte characters survive chunk borders. */
+  private forEachLine(visit: (line: string) => void): number {
+    const descriptor = fs.openSync(this.logPath, 'r');
+    const decoder = new StringDecoder('utf8');
+    const buffer = Buffer.allocUnsafe(64 * 1024);
+    let remainder = '';
+    let count = 0;
 
-    if (!fs.existsSync(this.logPath)) return { valid: true, errors: [] };
-    if (lines.length && !fs.existsSync(this.headPath)) {
-      errors.push('Head record missing: tail truncation cannot be detected');
-    }
-
-    let expectedHash = GENESIS;
-    let expectedSequence = 1;
-
-    for (let i = 0; i < lines.length; i++) {
-      let entry: AuditLogEntry;
-      try {
-        entry = JSON.parse(lines[i]) as AuditLogEntry;
-      } catch (error) {
-        errors.push(`Line ${i + 1}: parse error - ${error}`);
-        continue;
-      }
-
-      // Legacy entries predate sequence numbers; the missing head record below
-      // already reports that their integrity cannot be fully proven.
-      if (entry.sequence !== undefined && entry.sequence !== expectedSequence) {
-        errors.push(
-          `Line ${i + 1}: sequence ${String(entry.sequence)} expected ${expectedSequence} (gap or truncation)`,
-        );
-      }
-      if (entry.previousHash !== expectedHash) {
-        errors.push(`Line ${i + 1}: hash chain broken`);
-      }
-
-      if (entry.signature) {
-        const secret = this.secretFor(entry.keyId);
-        if (!secret) {
-          errors.push(`Line ${i + 1}: no signing key for keyId ${String(entry.keyId)}`);
-        } else {
-          const { signature, ...unsigned } = entry;
-          const expected = createHmac('sha256', secret)
-            .update(JSON.stringify(unsigned))
-            .digest('hex');
-          if (signature !== expected) errors.push(`Line ${i + 1}: invalid signature`);
+    try {
+      let bytes: number;
+      while ((bytes = fs.readSync(descriptor, buffer, 0, buffer.length, null)) > 0) {
+        remainder += decoder.write(buffer.subarray(0, bytes));
+        let newline: number;
+        while ((newline = remainder.indexOf('\n')) !== -1) {
+          const line = remainder.slice(0, newline);
+          remainder = remainder.slice(newline + 1);
+          if (line.trim() !== '') {
+            count += 1;
+            visit(line);
+          }
         }
       }
+      remainder += decoder.end();
+      if (remainder.trim() !== '') {
+        count += 1;
+        visit(remainder);
+      }
+    } finally {
+      fs.closeSync(descriptor);
+    }
+    return count;
+  }
 
-      expectedHash = this.computeHash(lines[i]);
-      expectedSequence += 1;
+  private verifyEntry(
+    line: string,
+    lineNumber: number,
+    expectedHash: string,
+    expectedSequence: number,
+    errors: string[],
+  ): { hash: string; sequence: number } {
+    const hash = this.computeHash(line);
+    const sequence = expectedSequence + 1;
+    let entry: AuditLogEntry;
+    try {
+      entry = JSON.parse(line) as AuditLogEntry;
+    } catch (error) {
+      errors.push(`Line ${lineNumber}: parse error - ${error}`);
+      return { hash, sequence };
     }
 
+    // Legacy entries predate sequence numbers; the head check below already
+    // reports that their integrity cannot be fully proven.
+    if (entry.sequence !== undefined && entry.sequence !== expectedSequence) {
+      errors.push(
+        `Line ${lineNumber}: sequence ${String(entry.sequence)} expected ${expectedSequence} (gap or truncation)`,
+      );
+    }
+    if (entry.previousHash !== expectedHash) {
+      errors.push(`Line ${lineNumber}: hash chain broken`);
+    }
+
+    if (entry.signature) {
+      const secret = this.secretFor(entry.keyId);
+      if (!secret) {
+        errors.push(`Line ${lineNumber}: no signing key for keyId ${String(entry.keyId)}`);
+      } else {
+        const { signature, ...unsigned } = entry;
+        const expected = createHmac('sha256', secret)
+          .update(JSON.stringify(unsigned))
+          .digest('hex');
+        if (signature !== expected) errors.push(`Line ${lineNumber}: invalid signature`);
+      }
+    }
+
+    return { hash, sequence };
+  }
+
+  private verifyHead(lineCount: number, expectedHash: string, errors: string[]): void {
     if (fs.existsSync(this.headPath)) {
       try {
         const head: unknown = JSON.parse(fs.readFileSync(this.headPath, 'utf-8'));
@@ -278,9 +308,9 @@ export class AuditLogger {
           keyId?: unknown;
           signature?: unknown;
         };
-        if (record.sequence !== lines.length) {
+        if (record.sequence !== lineCount) {
           errors.push(
-            `Tail truncated: head says ${String(record.sequence)} entries, log has ${lines.length}`,
+            `Tail truncated: head says ${String(record.sequence)} entries, log has ${lineCount}`,
           );
         }
         if (record.hash !== expectedHash) errors.push('Head hash does not match the log');
@@ -302,6 +332,34 @@ export class AuditLogger {
         errors.push(`Head record unreadable: ${error}`);
       }
     }
+  }
+
+  verifyChain(): { valid: boolean; errors: string[] } {
+    if (!fs.existsSync(this.logPath)) return { valid: true, errors: [] };
+
+    let expectedHash = GENESIS;
+    let expectedSequence = 1;
+    const entryErrors: string[] = [];
+    let lineNumber = 0;
+    const lineCount = this.forEachLine((line) => {
+      lineNumber += 1;
+      const verified = this.verifyEntry(
+        line,
+        lineNumber,
+        expectedHash,
+        expectedSequence,
+        entryErrors,
+      );
+      expectedHash = verified.hash;
+      expectedSequence = verified.sequence;
+    });
+
+    const errors: string[] = [];
+    if (lineCount && !fs.existsSync(this.headPath)) {
+      errors.push('Head record missing: tail truncation cannot be detected');
+    }
+    errors.push(...entryErrors);
+    if (fs.existsSync(this.headPath)) this.verifyHead(lineCount, expectedHash, errors);
 
     return { valid: errors.length === 0, errors };
   }

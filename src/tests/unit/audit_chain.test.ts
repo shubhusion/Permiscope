@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import * as os from 'os';
 import * as path from 'path';
 import { AuditLogger } from '../../logging/AuditLogger';
@@ -34,6 +35,36 @@ describe('audit chain', () => {
 
   afterEach(() => {
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('verifies a large log with streamed reads', () => {
+    const logger = new AuditLogger(dir, false);
+    const lines: string[] = [];
+    let hash = '0'.repeat(64);
+
+    for (let sequence = 1; sequence <= 3000; sequence += 1) {
+      const line = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        agentId: 'large-log',
+        action: {
+          actionName: 'safe',
+          parameters: {},
+          agentId: 'large-log',
+          timestamp: new Date(),
+        },
+        decision: 'ALLOW',
+        sequence,
+        previousHash: hash,
+      });
+      lines.push(line);
+      hash = createHash('sha256').update(line).digest('hex');
+    }
+
+    const logPath = path.join(dir, 'audit.log');
+    fs.writeFileSync(logPath, lines.join('\n') + '\n');
+    fs.writeFileSync(path.join(dir, 'audit.log.head'), JSON.stringify({ sequence: 3000, hash }));
+
+    expect(logger.verifyChain()).toEqual({ valid: true, errors: [] });
   });
 
   test('a signed chain with sequence numbers verifies', async () => {
