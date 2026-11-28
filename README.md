@@ -317,8 +317,11 @@ Check out `src/scenarios/` for full demos:
 
 ## 📚 Documentation
 
-See the [`/docs`](./docs) folder for detailed guides:
+Start with the [documentation index](./docs/README.md). Detailed guides:
 
+- [Native hooks](./docs/hooks.md) — Claude Code, Cursor and Codex setup
+- [Worked examples](./examples/README.md) — Copy-pasteable hook configs
+- [v2.1.0 launch post](./docs/launch-post.md) — Positioning, evidence and limitations
 - [Architecture](./docs/architecture.md) — System design and trust boundaries
 - [Security Model](./docs/security-model.md) — Threat model and guarantees
 - [Policy Engine](./docs/policy-engine.md) — Rule evaluation and guardrails

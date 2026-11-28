@@ -1,6 +1,6 @@
 # Roadmap
 
-**Status:** v1.1.0, v1.2.0, v2.0.0 and v2.1.0 released · alpha
+**Status:** v1.1.0, v1.2.0, v2.0.0 and v2.1.0 released · v2.2.0 work unreleased on `main` · alpha
 [![CI](https://github.com/shubhusion/Permiscope/actions/workflows/ci.yml/badge.svg)](https://github.com/shubhusion/Permiscope/actions/workflows/ci.yml)
 **[Live demo →](https://shubhusion.github.io/Permiscope/)** ·
 [Eval corpus](./eval/cases.json) · [Security policy](./SECURITY.md) ·
@@ -80,6 +80,12 @@ This is a breaking release; see the [migration guide](./docs/migration.md#1x--20
 |---|---|
 | #129 | Native Cursor hook adapter and shared hook evaluator ([ADR-0023](./docs/adr/0023-shared-hook-evaluator.md)) |
 | #131 | Native Codex hook adapter |
+
+## Merged after v2.1.0 — targets v2.2.0
+
+| Issue | Delivered |
+|---|---|
+| #135 | Documentation index, launch post and hook examples |
 
 ## Next
 
