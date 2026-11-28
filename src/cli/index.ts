@@ -91,6 +91,14 @@ async function main() {
     return;
   }
 
+  if (args[0] === 'hook') {
+    const { runHook } = await import('../hooks/claude');
+    const raw = fs.readFileSync(0, 'utf-8');
+    const output = await runHook(raw);
+    if (output) process.stdout.write(`${JSON.stringify(output)}\n`);
+    return;
+  }
+
   if (args[0] === 'eval') {
     const { runEval } = await import('../eval/runner');
     const result = await runEval(args[1]);
@@ -146,6 +154,7 @@ async function main() {
     console.log('Example: permiscope run_command "echo hello"');
     console.log('         permiscope read_file "C:/Safe/data.txt"');
     console.log('         permiscope eval [cases.json]');
+    console.log('         permiscope hook  (reads Claude Code hook JSON on stdin)');
     console.log('         permiscope verify [audit.log|segment-dir|manifest.json]');
     console.log('         permiscope audit migrate [audit.log] [segment-dir]');
     console.log('         permiscope serve  (needs PERMISCOPE_SIDECAR_TOKEN)');

@@ -183,6 +183,7 @@ Permiscope is a **trust layer**, not an agent framework. It wraps your existing 
 - Custom agent loops
 - Scripts and automations
 - Any Node.js/TypeScript code
+- Claude Code built-in tools via a [native PreToolUse hook](./docs/hooks.md)
 
 ---
 
