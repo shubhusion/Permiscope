@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Split `ExecutionGateway.run` into focused helpers; no behavior change (#93).
 - Made the approval TTL regression test deterministic on loaded CI runners (#93).
+- Split JWT verification into decode/signature/claims/principal helpers; no behavior change (#95).
 
 ## [1.2.0] - 2026-11-27
 
