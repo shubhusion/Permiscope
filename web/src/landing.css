@@ -37,6 +37,8 @@
 }
 
 .landing-nav nav a {
+  display: inline-block;
+  padding: 8px 4px;
   text-decoration: none;
   color: var(--muted);
   transition: color 160ms ease;
@@ -127,6 +129,9 @@
   color: #0a0d0e;
   font-weight: 600;
 }
+
+/* `.landing a` would otherwise win on specificity and make amber-on-amber text. */
+.landing .btn-primary { color: #0a0d0e; }
 
 .btn-primary:hover { transform: translateY(-2px); background: #ffc33d; }
 

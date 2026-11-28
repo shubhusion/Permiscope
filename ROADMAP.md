@@ -87,6 +87,7 @@ This is a breaking release; see the [migration guide](./docs/migration.md#1x--20
 |---|---|
 | #135 | Documentation index, launch post and hook examples |
 | #138 | Landing page refresh with native hook section |
+| #141 | WCAG 2.2 AA gate for the web UI ([ADR-0024](./docs/adr/0024-accessibility-gate.md)) |
 
 ## Next
 

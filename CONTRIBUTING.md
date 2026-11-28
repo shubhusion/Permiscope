@@ -46,6 +46,8 @@ npm test
 npm run eval
 npm run typecheck:web
 npm run build:web
+npx playwright install chromium   # first time only
+npm run test:a11y
 npm run build:esm
 npm run check:package
 npm run e2e

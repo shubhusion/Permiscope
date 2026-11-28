@@ -58,6 +58,7 @@ CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 - `npm run eval:fixture` and `npm run fixture:web`, followed by
   `git diff --exit-code -- eval/fixtures/rogue-agent.json web/public/fixtures/demo.json`
 - `npm run typecheck:web` and `npm run build:web`
+- `npm run test:a11y` (Playwright + axe, WCAG 2.2 AA; browser install required once)
 
 Node 24+ is required for both development and consumption; `engines.node` and CI agree.
 Node 18, 20 and 22 are not tested. `npm run audit:verify` is available locally but is
