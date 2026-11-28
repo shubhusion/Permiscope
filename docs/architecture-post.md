@@ -23,24 +23,27 @@ The boundary is honest: we govern calls that pass through us, not the process it
 
 ## Decisions and why
 
-- **Parse, do not sanitize.** Early versions stripped `$()` and backticks before regex
+The canonical records are the [architecture decision records](./adr/README.md). The bullets
+below are a short summary; each links to its full ADR.
+
+- **[Parse, do not sanitize](./adr/0002-ast-command-tokenization.md).** Early versions stripped `$()` and backticks before regex
   matching, which made `$(rm -rf /)` disappear while still executing. We now tokenize
   with `shell-quote`, reject operators and nested shells, and execute via argv with no
   shell. What is authorized is what runs.
-- **Fail closed.** A scope with no allowed roots denies file access; a non-interactive
+- **[Fail closed](./adr/0003-fail-closed-path-containment.md).** A scope with no allowed roots denies file access; a non-interactive
   approval request times out and blocks; a corrupt cache becomes empty. Permissive
   defaults were the source of most real bugs found in the audit.
-- **Identity from the host, not the caller.** Approval cache keys once used a
+- **[Identity from the host, not the caller](./adr/0004-host-provided-identity.md).** Approval cache keys once used a
   caller-supplied `agentId`, so any agent could claim another's approval. A host-provided
   `principalProvider` now supplies identity.
-- **Unkeyed links, keyed signatures.** The hash chain uses plain SHA-256 so rotating an
+- **[Unkeyed links, keyed signatures](./adr/0005-audit-chain-design.md).** The hash chain uses plain SHA-256 so rotating an
   HMAC key does not invalidate old links. Per-entry `keyId` plus a key ring provides
   authenticity across rotations. A head record catches tail truncation, which a purely
   backward chain cannot detect.
-- **One UI, two data sources.** The same React console can read the local Express API
+- **[One UI, two data sources](./adr/0015-fixture-backed-demo.md).** The same React console can read the local Express API
   or a committed fixture, which makes a public demo possible without exposing a live
   approval endpoint or any secrets.
-- **Sidecar over SDK proliferation.** A loopback HTTP service with a typed JSON contract
+- **[Sidecar over SDK proliferation](./adr/0013-sidecar-contract.md).** A loopback HTTP service with a typed JSON contract
   makes governance usable from Python, Go or Rust without rewriting policy logic for
   each language. It is loopback-only by default and never waits for a TTY.
 

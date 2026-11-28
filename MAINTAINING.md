@@ -106,6 +106,12 @@ runtime, so the gate blocks high/critical only. Recheck before any Jest major ch
 - New runtime dependencies need a justification in the PR: size, maintenance, and
   supply-chain risk count.
 
+## Architecture decisions
+
+Decisions are recorded in [`docs/adr/`](./docs/adr/README.md) with context, consequences
+and rejected alternatives. When working on a change, name the relevant ADR in your
+response and PR description; add one in the same PR for any new material decision.
+
 ## Release process
 
 ![Release pipeline](./docs/assets/release-workflow.svg)
