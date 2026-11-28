@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Landing page refresh: sharper hero copy, native Claude Code/Cursor/Codex hook section, community CTA and fresh SEO metadata (#138).
 - Documentation index, v2.1.0 launch post and copy-pasteable hook examples for Claude Code, Cursor and Codex; curated good-first issues for newcomers (#135).
 
 ## [2.1.0] - 2026-11-28

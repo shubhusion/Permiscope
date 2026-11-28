@@ -29,6 +29,8 @@ describeBuilt('built web assets', () => {
       .map((name) => fs.readFileSync(path.join(assetsDir, name), 'utf-8'))
       .join('');
     expect(content).toContain('Governed');
-    expect(content).toContain('OPEN THE CONSOLE');
+    expect(content).toContain('TRY THE LIVE CONSOLE');
+    expect(content).toContain('Works with the agent you already use');
+    expect(content).toContain('permiscope hook codex');
   });
 });

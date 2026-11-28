@@ -86,6 +86,7 @@ This is a breaking release; see the [migration guide](./docs/migration.md#1x--20
 | Issue | Delivered |
 |---|---|
 | #135 | Documentation index, launch post and hook examples |
+| #138 | Landing page refresh with native hook section |
 
 ## Next
 
