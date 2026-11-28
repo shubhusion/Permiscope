@@ -79,6 +79,7 @@ This is a breaking release; see the [migration guide](./docs/migration.md#1x--20
 | Issue | Delivered |
 |---|---|
 | #129 | Native Cursor hook adapter and shared hook evaluator ([ADR-0023](./docs/adr/0023-shared-hook-evaluator.md)) |
+| #131 | Native Codex hook adapter |
 
 ## Next
 

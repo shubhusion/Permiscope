@@ -99,6 +99,14 @@ async function main() {
     return;
   }
 
+  if (args[0] === 'hook' && args[1] === 'codex') {
+    const { runCodexHook } = await import('../hooks/codex');
+    const raw = fs.readFileSync(0, 'utf-8');
+    const output = await runCodexHook(raw);
+    if (output) process.stdout.write(`${JSON.stringify(output)}\n`);
+    return;
+  }
+
   if (args[0] === 'hook' && args[1]) {
     console.error(`❌ Unsupported hook host: ${args[1]}`);
     process.exit(2);
@@ -169,7 +177,7 @@ async function main() {
     console.log('         permiscope read_file "C:/Safe/data.txt"');
     console.log('         permiscope eval [cases.json]');
     console.log(
-      '         permiscope hook [cursor]  (reads hook JSON on stdin; default: Claude Code)',
+      '         permiscope hook [cursor|codex]  (hook JSON on stdin; default: Claude Code)',
     );
     console.log('         permiscope verify [audit.log|segment-dir|manifest.json]');
     console.log('         permiscope audit migrate [audit.log] [segment-dir]');
