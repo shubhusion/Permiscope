@@ -35,6 +35,12 @@ export class ScopeBuilder {
     return this;
   }
 
+  /** Executable prefix allowlist, e.g. `['git status', 'npm test']`. */
+  allowCommands(commands: string[]): this {
+    this.scope.allowedCommands = [...commands];
+    return this;
+  }
+
   withRoles(roles: string[]): this {
     this.scope.roles = [...roles];
     return this;

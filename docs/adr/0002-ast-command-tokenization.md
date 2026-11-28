@@ -2,6 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-11-28
+- Note: the parser decision below remains in force. The default policy's use of a
+  denylist was superseded by [ADR-0019](./0019-default-command-allowlist.md).
 
 ## Context
 

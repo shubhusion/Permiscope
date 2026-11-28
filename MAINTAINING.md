@@ -54,7 +54,7 @@ CI (`.github/workflows/ci.yml`) runs on Ubuntu and Windows with Node 24 and 26:
 - `npm run build`
 - `npm test` (coverage thresholds: 70% statements, 65% branches, 72% functions, 72% lines)
 - `npm run lint`
-- `npm run eval` (36-case adversarial corpus)
+- `npm run eval` (56-case adversarial corpus)
 - `npm run typecheck:web` and `npm run build:web`
 
 Node 24+ is required for both development and consumption; `engines.node` and CI agree.

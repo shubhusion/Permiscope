@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The default `run_command` policy now uses an executable allowlist instead of a denylist. Commands such as `rm -r -f /`, `node -e`, `curl` uploads and `python -m http.server` were previously allowed; they now block unless a caller opts in. Add `allowedCommands` to a custom scope to widen it. See [ADR-0019](./docs/adr/0019-default-command-allowlist.md) (#111).
+
 ### Changed
 
 - Split `ExecutionGateway.run` into focused helpers; no behavior change (#93).

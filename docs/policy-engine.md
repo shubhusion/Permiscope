@@ -58,7 +58,35 @@ No scopes match → BLOCK (default deny)
   filesystem that lies about `realpath`, is outside the library's control. Use OS-level
   isolation for adversarial environments.
 
-### Command Patterns
+### Command Allowlist
+
+```typescript
+{
+  actionName: 'run_command',
+  decision: 'ALLOW',
+  allowedCommands: ['git status', 'git diff', 'npm test']
+}
+```
+
+- `allowedCommands` is a list of **prefixes**, not a list of executables. Each entry is
+  parsed with the same `shell-quote` parser used for actions; invalid entries reject the
+  policy at construction.
+- The parsed action argv must start with one entry. The first token is compared by
+  executable basename, lowercased and without a Windows launcher extension; later tokens
+  are compared lowercased. `git status` allows `git status --short`, but not `git push` or
+  `git -c core.pager=cat status`.
+- An explicitly empty list denies every command. `undefined` leaves the executable
+  unrestricted for backwards compatibility; the default policy defines a list.
+- The allowlist is evaluated **before** `blockedCommandPatterns`. A command outside the
+  list is blocked with `GUARDRAIL_COMMAND_NOT_ALLOWED`; an unparseable command is blocked
+  with `GUARDRAIL_COMMAND`.
+- The default policy allows only `echo`, `pwd`, `git status`, `git diff`, `git log`,
+  `git show`, `git rev-parse` and `npm test`, and adds block patterns for `git --output`,
+  `git --no-index`, `git --ext-diff` and npm options that target another prefix,
+  workspace, registry, config or script shell. See
+  [ADR-0019](./adr/0019-default-command-allowlist.md).
+
+### Command Block Patterns
 
 ```typescript
 {
@@ -73,7 +101,8 @@ No scopes match → BLOCK (default deny)
 - Commands are **parsed with `shell-quote`**, not mutated:
   - Shell operators (`&&`, `|`, `>`, `$(`, comments) cause a **BLOCK** — they are
     rejected rather than stripped.
-  - Nested shells (`sh -c`, `cmd /c`, PowerShell `-Command`) cause a **BLOCK**.
+  - Nested shells (`sh -c`, `cmd /c`, PowerShell `-Command`) cause a **BLOCK**;
+    the flag comparison is case-insensitive.
   - Quoted words become single arguments; repeated whitespace is collapsed naturally.
 - Parsing failures fail closed: a command we cannot understand is blocked.
 - Allowed commands are executed via `spawn()` with an **argv array and no shell**, with
@@ -149,8 +178,9 @@ const result = await engine.evaluateDetailed(action);
 ```
 
 Reason codes: `ALLOWED`, `APPROVAL_REQUIRED`, `NO_MATCHING_SCOPE`,
-`NO_APPLICABLE_SCOPE`, `GUARDRAIL_PATH`, `GUARDRAIL_COMMAND`, `VALIDATOR_ERROR`,
-`SCOPE_BLOCK`, `APPROVAL_GRANTED`, `APPROVAL_NOT_GRANTED`.
+`NO_APPLICABLE_SCOPE`, `GUARDRAIL_PATH`, `GUARDRAIL_COMMAND`,
+`GUARDRAIL_COMMAND_NOT_ALLOWED`, `VALIDATOR_ERROR`, `SCOPE_BLOCK`, `APPROVAL_GRANTED`,
+`APPROVAL_NOT_GRANTED`.
 
 `ExecutionGateway.run()` exposes `reasonCode`, `matchedScope` and `remediation` on its
 result, and `PermiscopeAdapter` includes the reason in thrown errors.

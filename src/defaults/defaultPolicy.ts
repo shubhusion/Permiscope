@@ -28,9 +28,23 @@ export const defaultPolicy: Policy = {
     },
 
     // 2. Command Safety
+    // The allowlist is the primary control (ADR-0019). It admits only commands
+    // that are safe for a cooperative agent by default; callers that need more
+    // must opt in explicitly. The block patterns stay as defense-in-depth and
+    // cover argument-level escape hatches in the allowed commands.
     {
       actionName: 'run_command',
       decision: 'ALLOW',
+      allowedCommands: [
+        'echo',
+        'pwd',
+        'git status',
+        'git diff',
+        'git log',
+        'git show',
+        'git rev-parse',
+        'npm test',
+      ],
       blockedCommandPatterns: [
         'rm -rf',
         'rm -f',
@@ -44,6 +58,19 @@ export const defaultPolicy: Policy = {
         'reboot', // System ops
         'chmod 777',
         'chown root', // Permission ops
+        // git read commands must not write files or invoke external helpers
+        '^git (diff|log|show) .*--out',
+        '^git .*--no-i',
+        '^git .*--ext-d',
+        '^git .*--open-files',
+        // npm test must run the local test script, not another package or shell
+        '^npm .*--pre',
+        '^npm .*--work',
+        '^npm .* -w ',
+        '^npm .*--script-s',
+        '^npm .*--reg',
+        '^npm .*--user',
+        '^npm .*--global',
       ],
     },
 

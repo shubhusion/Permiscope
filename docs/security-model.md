@@ -38,6 +38,7 @@ bearer token into the verified provider, so the token is checked on every govern
 | **ReDoS attacks** | `safe-regex` validation of patterns |
 | **Path traversal** | realpath resolution + mandatory root containment |
 | **Shell injection** | AST tokenization; operators and nested shells blocked; argv execution without a shell |
+| **Unlisted interpreters and network clients** | Default executable allowlist plus argument block patterns (ADR-0019) |
 | **Dashboard CSRF** | CORS restricted to localhost |
 | **Unauthorized approvals** | Token-based authentication |
 | **Approval spoofing** | Authenticated principal IDs; caller-supplied agentId ignored |
@@ -82,7 +83,7 @@ Permiscope defaults to **fail-closed** (deny on error):
 | Validator throws error | `BLOCK` |
 | Audit log write fails (strict mode) | Action blocked |
 | Lock acquisition fails | Operation retried or fails |
-| Regex pattern unsafe | Pattern skipped (warning logged) |
+| Regex pattern unsafe | Policy rejected at construction (fail closed) |
 
 ## Audit Guarantees
 

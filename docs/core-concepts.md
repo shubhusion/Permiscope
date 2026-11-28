@@ -41,6 +41,7 @@ interface PermissionScope {
   actionName: string;
   decision: 'ALLOW' | 'BLOCK' | 'REQUIRE_APPROVAL';
   allowedPaths?: string[];           // For file operations
+  allowedCommands?: string[];        // Executable prefixes, e.g. ['git status']
   blockedCommandPatterns?: string[]; // Regex patterns
   validator?: (action) => boolean;   // Dynamic validation
 }
@@ -60,8 +61,9 @@ interface PermissionScope {
 Guardrails are additional restrictions applied after scope matching:
 
 1. **Path Restrictions** — Limit file operations to specific directories
-2. **Command Patterns** — Block commands matching regex patterns
-3. **Dynamic Validators** — Custom TypeScript functions for complex logic
+2. **Command Allowlist** — Permit only listed executable prefixes
+3. **Command Patterns** — Block commands matching regex patterns
+4. **Dynamic Validators** — Custom TypeScript functions for complex logic
 
 ## Approvals
 

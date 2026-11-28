@@ -14,11 +14,14 @@
 
 ### 🛡️ Secure. 📜 Auditable. 🙋 Human-Driven.
 
-**Permiscope** is an open-source infrastructure layer that mediates all real-world actions performed by autonomous AI agents. Think of it as **OAuth + Policy Engine + Audit System** for AI agents.
+**Permiscope** is an open-source infrastructure layer that mediates the real-world actions of autonomous AI agents. Think of it as **verified principals + policy engine + audit trail** for AI agents.
+
+> [!IMPORTANT]
+> Permiscope is **cooperative governance, not a sandbox** ([ADR-0001](./docs/adr/0001-cooperative-governance-boundary.md)). It governs actions that flow through its API; it does not intercept direct `fs` calls or processes spawned outside the gateway. Use OS-level isolation for fully adversarial agents.
 
 ## 🚀 Why Permiscope?
 
-Without mediation, agents operate with full system permissions — a single bug or prompt injection can cause catastrophic damage. Permiscope enforces **least privilege, human oversight, and auditability** by default, making autonomous systems safe for production.
+Without mediation, agents operate with full system permissions — a single bug or an injected instruction can cause catastrophic damage. Permiscope enforces **least privilege, human oversight, and auditability** by default, reducing the blast radius of autonomous systems in production.
 
 ---
 
@@ -50,7 +53,7 @@ each execution. [Full architecture →](./docs/architecture.md)
       <h3>🔐 Granular Control</h3>
       <ul>
         <li><b>Permission Scopes:</b> ALLOW, BLOCK, or REQUIRE_APPROVAL for any action.</li>
-        <li><b>Contextual Guardrails:</b> Case-insensitive path restrictions and <b>ReDoS-protected</b> command filtering.</li>
+        <li><b>Contextual Guardrails:</b> Case-insensitive path restrictions, an <b>executable allowlist</b>, and <b>ReDoS-protected</b> command filtering.</li>
       </ul>
     </td>
     <td width="50%" valign="top">
@@ -65,14 +68,14 @@ each execution. [Full architecture →](./docs/architecture.md)
     <td width="50%" valign="top">
       <h3>📝 Trust & Transparency</h3>
       <ul>
-        <li><b>Tamper-Proof Logs:</b> HMAC-SHA256 signed hash chaining for audit integrity.</li>
+        <li><b>Tamper-Evident Logs:</b> hash chaining plus HMAC-SHA256 signatures when a signing secret is set.</li>
         <li><b>Dry-Run Mode:</b> Simulate actions to understand results without side effects.</li>
       </ul>
     </td>
     <td width="50%" valign="top">
       <h3>🚀 Advanced Features</h3>
       <ul>
-        <li><b>Shadow Mode:</b> Safely test untrusted agents in isolation.</li>
+        <li><b>Shadow Mode:</b> Observe what an untrusted agent would do without executing it.</li>
         <li><b>Authenticated Dashboard:</b> Securely manage approvals and monitor logs in real-time.</li>
       </ul>
     </td>
@@ -117,9 +120,9 @@ Permiscope is designed for high-trust environments. Use these environment variab
 
 ### 🧪 Security evaluation
 
-A versioned corpus of adversarial actions (shell injection, path escape, approval
-identity, default deny) is run on every CI job. Current result: **36/36 passed
-(100%)** for corpus v1.0.0. Reproduce it locally with:
+A versioned corpus of adversarial actions (shell injection, command allowlist escape,
+path escape, approval identity, default deny) is run on every CI job. Current result:
+**56/56 passed (100%)** for corpus v1.1.0. Reproduce it locally with:
 
 ```bash
 npm run eval
