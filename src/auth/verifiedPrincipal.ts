@@ -12,8 +12,84 @@ export interface JwtVerifierOptions {
   clockToleranceSeconds?: number;
 }
 
+interface DecodedToken {
+  header: Record<string, any>;
+  payload: Record<string, any>;
+  data: string;
+  signature: Buffer;
+}
+
 function decodePart(part: string): Record<string, any> {
   return JSON.parse(Buffer.from(part, 'base64url').toString('utf-8'));
+}
+
+function decodeToken(token: string): DecodedToken {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Invalid principal token');
+  const [headerPart, payloadPart, signaturePart] = parts;
+
+  let header: Record<string, any>;
+  let payload: Record<string, any>;
+  try {
+    header = decodePart(headerPart);
+    payload = decodePart(payloadPart);
+  } catch {
+    throw new Error('Invalid principal token');
+  }
+
+  return {
+    header,
+    payload,
+    data: `${headerPart}.${payloadPart}`,
+    signature: Buffer.from(signaturePart, 'base64url'),
+  };
+}
+
+function verifyTokenSignature(token: DecodedToken, options: JwtVerifierOptions): void {
+  const { header, data, signature } = token;
+  let valid = false;
+
+  if (options.secret && header.alg === 'HS256') {
+    const expected = createHmac('sha256', options.secret).update(data).digest();
+    valid = expected.length === signature.length && timingSafeEqual(expected, signature);
+  } else if (options.publicKey && header.alg === 'RS256') {
+    valid = verifySignature('RSA-SHA256', Buffer.from(data), options.publicKey, signature);
+  }
+
+  if (!valid) throw new Error('Invalid principal token signature');
+}
+
+function assertTokenClaims(
+  payload: Record<string, any>,
+  options: JwtVerifierOptions,
+  now: number,
+): void {
+  const tolerance = options.clockToleranceSeconds ?? 30;
+  if (payload.exp !== undefined && now > payload.exp + tolerance) {
+    throw new Error('Token expired');
+  }
+  if (payload.nbf !== undefined && now < payload.nbf - tolerance) {
+    throw new Error('Token not valid yet');
+  }
+  if (options.issuer && payload.iss !== options.issuer) {
+    throw new Error('Token issuer mismatch');
+  }
+  if (options.audience) {
+    const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (!aud.includes(options.audience)) throw new Error('Token audience mismatch');
+  }
+}
+
+function principalFromClaims(payload: Record<string, any>, options: JwtVerifierOptions) {
+  const idClaim = options.idClaim ?? 'sub';
+  const roleClaim = options.roleClaim ?? 'roles';
+  const id = payload[idClaim];
+  if (typeof id !== 'string' || id.length === 0) throw new Error('Token missing principal id');
+
+  const roles = Array.isArray(payload[roleClaim])
+    ? payload[roleClaim].filter((role: unknown) => typeof role === 'string')
+    : [];
+  return { id, roles };
 }
 
 /** Creates a principal provider that verifies JWT bearer tokens locally. */
@@ -21,56 +97,15 @@ export function verifiedPrincipalProvider(options: JwtVerifierOptions): Principa
   if (!options.secret && !options.publicKey) {
     throw new Error('JwtVerifier requires a secret or public key');
   }
-  const idClaim = options.idClaim ?? 'sub';
-  const roleClaim = options.roleClaim ?? 'roles';
-  const tolerance = options.clockToleranceSeconds ?? 30;
 
-  return async (_action) => {
+  return async () => {
     const token = requestToken();
     if (!token) throw new Error('Missing principal token');
 
-    const parts = token.split('.');
-    if (parts.length !== 3) throw new Error('Invalid principal token');
-    const [headerPart, payloadPart, signaturePart] = parts;
-
-    let header: Record<string, any>;
-    let payload: Record<string, any>;
-    try {
-      header = decodePart(headerPart);
-      payload = decodePart(payloadPart);
-    } catch {
-      throw new Error('Invalid principal token');
-    }
-
-    const data = `${headerPart}.${payloadPart}`;
-    const signature = Buffer.from(signaturePart, 'base64url');
-    let valid = false;
-    if (options.secret && header.alg === 'HS256') {
-      const expected = createHmac('sha256', options.secret).update(data).digest();
-      valid = expected.length === signature.length && timingSafeEqual(expected, signature);
-    } else if (options.publicKey && header.alg === 'RS256') {
-      valid = verifySignature('RSA-SHA256', Buffer.from(data), options.publicKey, signature);
-    }
-    if (!valid) throw new Error('Invalid principal token signature');
-
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp !== undefined && now > payload.exp + tolerance)
-      throw new Error('Token expired');
-    if (payload.nbf !== undefined && now < payload.nbf - tolerance)
-      throw new Error('Token not valid yet');
-    if (options.issuer && payload.iss !== options.issuer) throw new Error('Token issuer mismatch');
-    if (options.audience) {
-      const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-      if (!aud.includes(options.audience)) throw new Error('Token audience mismatch');
-    }
-
-    const id = payload[idClaim];
-    if (typeof id !== 'string' || id.length === 0) throw new Error('Token missing principal id');
-    const roles = Array.isArray(payload[roleClaim])
-      ? payload[roleClaim].filter((role: unknown) => typeof role === 'string')
-      : [];
-
-    return { id, roles };
+    const decoded = decodeToken(token);
+    verifyTokenSignature(decoded, options);
+    assertTokenClaims(decoded.payload, options, Math.floor(Date.now() / 1000));
+    return principalFromClaims(decoded.payload, options);
   };
 }
 
