@@ -130,7 +130,8 @@ npm run eval
 
 See [`eval/cases.json`](./eval/cases.json) for the cases and
 [`eval/fixtures/rogue-agent.json`](./eval/fixtures/rogue-agent.json) for a recorded
-end-to-end scenario.
+end-to-end scenario with a verified signed audit chain. Regenerate both the scenario and
+the public demo data with `npm run eval:fixture && npm run fixture:web`.
 
 ---
 

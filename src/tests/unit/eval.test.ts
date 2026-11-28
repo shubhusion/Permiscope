@@ -63,10 +63,12 @@ describe('adversarial eval corpus', () => {
   test('the rogue-agent fixture is deterministic and internally consistent', () => {
     const fixturePath = path.resolve(__dirname, '../../../eval/fixtures/rogue-agent.json');
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
-    expect(fixture.version).toBe('1.0.0');
-    expect(fixture.entries).toHaveLength(4);
+    expect(fixture.version).toBe('1.1.0');
+    expect(fixture.chain.valid).toBe(true);
+    expect(fixture.chain.entries).toBe(fixture.entries.length);
+    expect(fixture.entries).toHaveLength(8);
     expect(fixture.entries.map((entry: { sequence: number }) => entry.sequence)).toEqual([
-      1, 2, 3, 4,
+      1, 2, 3, 4, 5, 6, 7, 8,
     ]);
     for (const step of fixture.steps) expect(step.actual).toBe(step.expected);
   });

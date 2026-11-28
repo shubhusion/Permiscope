@@ -1,7 +1,12 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scenario": "rogue-agent",
   "generatedAt": "2026-11-27T00:00:00.000Z",
+  "chain": {
+    "valid": true,
+    "errors": [],
+    "entries": 8
+  },
   "steps": [
     {
       "name": "read config",
@@ -52,12 +57,41 @@
         "timestamp": "2026-11-27T00:00:00.000Z"
       },
       "decision": "ALLOW",
+      "phase": "INTENT",
+      "intentHash": "732a85abe1c1c9d4c8f17bb53e103765591e88ed4a83c6d9a09717d9cf2995f3",
+      "result": {
+        "planned": true
+      },
+      "sequence": 1,
+      "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "keyId": "default",
+      "signature": "5fbb603eae430bfd1130c31b5ba82d6645dd0155e8f36b0f60e799e3cd705768"
+    },
+    {
+      "timestamp": "2026-11-27T00:00:00.000Z",
+      "agentId": "rogue-agent",
+      "action": {
+        "actionName": "read_config",
+        "parameters": {
+          "path": "nginx.conf"
+        },
+        "agentId": "rogue-agent",
+        "reason": "Demonstration of governed execution",
+        "timestamp": "2026-11-27T00:00:00.000Z"
+      },
+      "decision": "ALLOW",
+      "phase": "RESULT",
+      "intentHash": "732a85abe1c1c9d4c8f17bb53e103765591e88ed4a83c6d9a09717d9cf2995f3",
       "result": {
         "success": true,
-        "output": "worker_processes 1;",
+        "output": "[redacted]",
+        "error": "[redacted]",
         "dryRun": false
       },
-      "sequence": 1
+      "sequence": 2,
+      "previousHash": "97b3d82d5c36b62cb31ff6c0235b78ab028a8a0ccb448caa5de676ce91e9d470",
+      "keyId": "default",
+      "signature": "33859df01a77b133929cff8e1d07ee29d920d790a627fd018a5f212d000e4f77"
     },
     {
       "timestamp": "2026-11-27T00:00:00.000Z",
@@ -72,12 +106,41 @@
         "timestamp": "2026-11-27T00:00:00.000Z"
       },
       "decision": "BLOCK",
+      "phase": "INTENT",
+      "intentHash": "7b3cafaea11776c6154f7b5721f50098f09e52218a87ead58ea8e52f05c0bd09",
+      "result": {
+        "planned": true
+      },
+      "sequence": 3,
+      "previousHash": "2657c4c885a48ed5e17618a938690698df816d708270e40d02c7fb113bb411f1",
+      "keyId": "default",
+      "signature": "28f6c605e82ac8420326dabc2b5be82535615de9225a3cf82507278035856ae3"
+    },
+    {
+      "timestamp": "2026-11-27T00:00:00.000Z",
+      "agentId": "rogue-agent",
+      "action": {
+        "actionName": "run_command",
+        "parameters": {
+          "command": "rm -rf /"
+        },
+        "agentId": "rogue-agent",
+        "reason": "Demonstration of governed execution",
+        "timestamp": "2026-11-27T00:00:00.000Z"
+      },
+      "decision": "BLOCK",
+      "phase": "RESULT",
+      "intentHash": "7b3cafaea11776c6154f7b5721f50098f09e52218a87ead58ea8e52f05c0bd09",
       "result": {
         "success": false,
-        "output": null,
+        "output": "[redacted]",
+        "error": "[redacted]",
         "dryRun": false
       },
-      "sequence": 2
+      "sequence": 4,
+      "previousHash": "db4f36cd25ebc2d3c85ad0eeb31583e0432e977271548af0fb075d3321fadf77",
+      "keyId": "default",
+      "signature": "36627b0cdbac508ac13675840b30326b39dc8d7a29ac2448765e2523484a9f5d"
     },
     {
       "timestamp": "2026-11-27T00:00:00.000Z",
@@ -92,12 +155,41 @@
         "timestamp": "2026-11-27T00:00:00.000Z"
       },
       "decision": "ALLOW",
+      "phase": "INTENT",
+      "intentHash": "693d0772eb1a47a9cbc4fb2d513cf3258b4de9e11b532b31e00daf83dd57cc15",
+      "result": {
+        "planned": true
+      },
+      "sequence": 5,
+      "previousHash": "34dc41b37fc6a189957eacc2868f4585f85a3d833d9b685b9e8ea97036740261",
+      "keyId": "default",
+      "signature": "5173c89c9b512a2cb03b5a518996992f2ba8894b91ad51fb442f4d0e48dfe6b7"
+    },
+    {
+      "timestamp": "2026-11-27T00:00:00.000Z",
+      "agentId": "rogue-agent",
+      "action": {
+        "actionName": "delete_file",
+        "parameters": {
+          "path": "/etc/passwd"
+        },
+        "agentId": "rogue-agent",
+        "reason": "Demonstration of governed execution",
+        "timestamp": "2026-11-27T00:00:00.000Z"
+      },
+      "decision": "ALLOW",
+      "phase": "RESULT",
+      "intentHash": "693d0772eb1a47a9cbc4fb2d513cf3258b4de9e11b532b31e00daf83dd57cc15",
       "result": {
         "success": true,
-        "output": "deleted",
+        "output": "[redacted]",
+        "error": "[redacted]",
         "dryRun": false
       },
-      "sequence": 3
+      "sequence": 6,
+      "previousHash": "18928d63888d5750bc218b410dc4d6f9ac6c8f5ddcec5cb6880999717a7c57cb",
+      "keyId": "default",
+      "signature": "0a97376fb79684da2292587926d08217510055f3cdf4897f8abc9d24ac6db955"
     },
     {
       "timestamp": "2026-11-27T00:00:00.000Z",
@@ -107,16 +199,42 @@
         "parameters": {},
         "agentId": "rogue-agent",
         "reason": "Demonstration of governed execution",
-        "timestamp": "2026-11-27T00:00:00.000Z",
-        "shadowMode": true
+        "timestamp": "2026-11-27T00:00:00.000Z"
       },
       "decision": "SHADOW_BLOCK",
+      "phase": "INTENT",
+      "intentHash": "12f98fd12bf9bd509c7234eef28cd2cdd3199d34de5996cb95d66f73febab143",
+      "result": {
+        "planned": true
+      },
+      "sequence": 7,
+      "previousHash": "cb63b31168e918cc159b301091a3da25126d151d8154d1130c574c1ee41cc764",
+      "keyId": "default",
+      "signature": "6ced0f8f1e9ceba954a4d8d9cb3f631f4ee6b3961e2aa458f458384f83d9fd20"
+    },
+    {
+      "timestamp": "2026-11-27T00:00:00.000Z",
+      "agentId": "rogue-agent",
+      "action": {
+        "actionName": "shadow_action",
+        "parameters": {},
+        "agentId": "rogue-agent",
+        "reason": "Demonstration of governed execution",
+        "timestamp": "2026-11-27T00:00:00.000Z"
+      },
+      "decision": "SHADOW_BLOCK",
+      "phase": "RESULT",
+      "intentHash": "12f98fd12bf9bd509c7234eef28cd2cdd3199d34de5996cb95d66f73febab143",
       "result": {
         "success": true,
-        "output": "[SHADOW] Action appeared successful.",
+        "output": "[redacted]",
+        "error": "[redacted]",
         "dryRun": false
       },
-      "sequence": 4
+      "sequence": 8,
+      "previousHash": "ee469fdf8cf6e3451e85bc0d00a728ff29255d5b16c0318d9e4bfc731da636ea",
+      "keyId": "default",
+      "signature": "860b4650c4832a4ccf81c4b147e01dc54925ad1d629a67d978aac037e6feb671"
     }
   ]
 }

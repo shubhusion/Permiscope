@@ -48,7 +48,8 @@
       },
       "decision": "ALLOW",
       "success": true,
-      "sequence": 1
+      "signature": "33859df01a77b133929cff8e1d07ee29d920d790a627fd018a5f212d000e4f77",
+      "sequence": 2
     },
     {
       "timestamp": "2026-11-27T00:00:00.000Z",
@@ -59,7 +60,8 @@
       },
       "decision": "BLOCK",
       "success": false,
-      "sequence": 2
+      "signature": "36627b0cdbac508ac13675840b30326b39dc8d7a29ac2448765e2523484a9f5d",
+      "sequence": 4
     },
     {
       "timestamp": "2026-11-27T00:00:00.000Z",
@@ -70,7 +72,8 @@
       },
       "decision": "ALLOW",
       "success": true,
-      "sequence": 3
+      "signature": "0a97376fb79684da2292587926d08217510055f3cdf4897f8abc9d24ac6db955",
+      "sequence": 6
     },
     {
       "timestamp": "2026-11-27T00:00:00.000Z",
@@ -79,12 +82,14 @@
       "parameters": {},
       "decision": "SHADOW_BLOCK",
       "success": true,
-      "sequence": 4
+      "signature": "860b4650c4832a4ccf81c4b147e01dc54925ad1d629a67d978aac037e6feb671",
+      "sequence": 8
     }
   ],
   "chain": {
     "valid": true,
-    "entries": 4,
+    "errors": [],
+    "entries": 8,
     "checks": [
       "sequence",
       "hash links",

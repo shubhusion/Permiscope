@@ -27,12 +27,16 @@ jobs:
     - run: npm audit --audit-level=high
     - run: npm run build
     - run: npm run typecheck:web
+    - run: npm run eval
+    - run: npm run eval:fixture
+    - run: npm run fixture:web
+    - name: Fixtures are up to date
+      run: git diff --exit-code -- eval/fixtures/rogue-agent.json web/public/fixtures/demo.json
     - run: npm run build:web
     - run: npm run build:esm
     - run: npm run check:package
     - run: npm test
     - run: npm run lint
-    - run: npm run eval
     - name: Python SDK tests
       if: runner.os == 'Linux'
       run: python -m unittest discover -s python -p 'test_*.py'

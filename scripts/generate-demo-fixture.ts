@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { runEval } from '../src/eval/runner';
 import { EvalCase } from '../src/eval/runner';
+import { summarizeCategories } from '../src/eval/summary';
+import { AuditLogEntry } from '../src/core/types';
 
 const root = path.resolve(__dirname, '..');
 const casesPath = path.join(root, 'eval/cases.json');
@@ -13,13 +15,13 @@ async function main(): Promise<void> {
   const scenario = JSON.parse(fs.readFileSync(scenarioPath, 'utf-8'));
   const evaluation = await runEval(casesPath);
 
-  const byCategory: Record<string, { passed: number; total: number }> = {};
-  for (const item of cases.cases) {
-    byCategory[item.category] ??= { passed: 0, total: 0 };
-    byCategory[item.category].total += 1;
-    byCategory[item.category].passed += 1;
-  }
+  const byCategory = summarizeCategories(cases.cases, evaluation);
 
+  if (!scenario.chain?.valid) {
+    throw new Error(
+      `Rogue-agent chain is not verified: ${(scenario.chain?.errors ?? ['missing chain result']).join('; ')}`,
+    );
+  }
   const timestamp = scenario.generatedAt as string;
   const approvals = [
     {
@@ -51,16 +53,21 @@ async function main(): Promise<void> {
     },
   ];
 
-  const logs = (scenario.entries as any[]).map((entry, index) => ({
-    timestamp: entry.timestamp,
-    agentId: entry.agentId,
-    actionName: entry.action?.actionName ?? 'unknown',
-    parameters: entry.action?.parameters ?? {},
-    decision: entry.decision,
-    success: Boolean(entry.result?.success),
-    signature: entry.signature,
-    sequence: entry.sequence ?? index + 1,
-  }));
+  // INTENT records are part of the chain but have no outcome to display. Show
+  // RESULTS in the audit stream, while the chain tab reports every entry.
+  const allEntries = scenario.entries as AuditLogEntry[];
+  const logs = allEntries
+    .filter((entry) => entry.phase !== 'INTENT')
+    .map((entry, index) => ({
+      timestamp: entry.timestamp,
+      agentId: entry.agentId,
+      actionName: entry.action?.actionName ?? 'unknown',
+      parameters: entry.action?.parameters ?? {},
+      decision: entry.decision,
+      success: Boolean(entry.result?.success),
+      signature: entry.signature,
+      sequence: entry.sequence ?? index + 1,
+    }));
 
   const fixture = {
     generatedAt: timestamp,
@@ -68,8 +75,9 @@ async function main(): Promise<void> {
     approvals,
     logs,
     chain: {
-      valid: true,
-      entries: logs.length,
+      valid: scenario.chain.valid,
+      errors: scenario.chain.errors ?? [],
+      entries: scenario.chain.entries ?? allEntries.length,
       checks: ['sequence', 'hash links', 'head record', 'signatures', 'parse validity'],
     },
     eval: {

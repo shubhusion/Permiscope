@@ -67,6 +67,8 @@ export interface GatewayOptions {
   budgetStore?: BudgetStore;
   /** Present blocked actions as successful without executing them. Host-only. */
   shadowMode?: boolean;
+  /** Clock for audit timestamps. Defaults to the system clock; fixtures inject a fixed one. */
+  clock?: () => Date;
 }
 
 export class ExecutionGateway {
@@ -83,6 +85,7 @@ export class ExecutionGateway {
   private cancelWaits = new Set<() => void>();
   private budgetTracker?: BudgetTracker;
   private shadowMode: boolean;
+  private clock: () => Date;
 
   constructor(
     policyEngine: PolicyEngine,
@@ -100,6 +103,7 @@ export class ExecutionGateway {
     this.approvalPollIntervalMs = options.approvalPollIntervalMs ?? 500;
     this.budgetTracker = options.budgetTracker;
     this.shadowMode = options.shadowMode ?? false;
+    this.clock = options.clock ?? (() => new Date());
     if (!this.budgetTracker && options.budget) {
       this.budgetTracker = new BudgetTracker(
         { [this.defaultPrincipalId]: options.budget },
@@ -317,7 +321,7 @@ export class ExecutionGateway {
       .update(JSON.stringify({ action, decision, principal: identity }))
       .digest('hex');
     await this.auditLogger.log({
-      timestamp: new Date().toISOString(),
+      timestamp: this.clock().toISOString(),
       agentId: identity,
       action,
       decision,
@@ -433,7 +437,7 @@ export class ExecutionGateway {
     dryRun: boolean,
   ): Promise<void> {
     await this.auditLogger.log({
-      timestamp: new Date().toISOString(),
+      timestamp: this.clock().toISOString(),
       agentId: identity,
       action,
       decision,
