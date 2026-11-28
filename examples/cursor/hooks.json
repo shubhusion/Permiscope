@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "npx -y permiscope@2.1.0 hook cursor",
+        "matcher": "curl|wget|rm|npm|git|node|python",
+        "timeout": 30,
+        "failClosed": true
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "npx -y permiscope@2.1.0 hook cursor",
+        "failClosed": true
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "npx -y permiscope@2.1.0 hook cursor",
+        "matcher": "Shell|Read|Write|Edit|Delete|Grep|MCP:",
+        "failClosed": true
+      }
+    ]
+  }
+}
