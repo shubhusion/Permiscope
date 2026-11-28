@@ -127,7 +127,10 @@ export class ApprovalCache {
   ): Promise<void> {
     await this.withLock(() => {
       const key = this.getKey(agentId, actionName, params);
-      if (!this.cache.has(key)) {
+      const existing = this.cache.get(key);
+      // An expired pending request is not a live approval: replace it so a
+      // stale queue entry cannot be approved later.
+      if (!existing || this.isExpired(existing)) {
         this.cache.set(key, {
           id: key,
           agentId,
@@ -135,6 +138,7 @@ export class ApprovalCache {
           params,
           status: 'PENDING',
           timestamp: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + this.ttlMs).toISOString(),
         });
       }
     });
@@ -150,24 +154,49 @@ export class ApprovalCache {
       const key = this.getKey(agentId, actionName, params);
       const item = this.cache.get(key);
       if (!item || item.status !== 'PENDING') return false;
+      if (this.isExpired(item)) {
+        this.cache.delete(key);
+        return false;
+      }
       item.status = 'APPROVED';
       item.expiresAt = new Date(Date.now() + this.ttlMs).toISOString();
       return true;
     });
   }
 
+  /** Approvals are single-use: remove one after it has authorized an action. */
+  async consumeApproval(
+    agentId: string,
+    actionName: string,
+    params: Record<string, any>,
+  ): Promise<boolean> {
+    return this.withLock(() => {
+      const key = this.getKey(agentId, actionName, params);
+      const item = this.cache.get(key);
+      if (!item || item.status !== 'APPROVED') return false;
+      if (this.isExpired(item)) {
+        this.cache.delete(key);
+        return false;
+      }
+      this.cache.delete(key);
+      return true;
+    });
+  }
+
   async getAll(): Promise<ApprovalRequest[]> {
     return this.withLock(() =>
-      Array.from(this.cache.values()).filter(
-        (item) => item.status === 'PENDING' || !this.isExpired(item),
-      ),
+      Array.from(this.cache.values()).filter((item) => !this.isExpired(item)),
     );
   }
 
   async updateStatus(id: string, status: 'APPROVED' | 'REJECTED'): Promise<boolean> {
     return this.withLock(() => {
       const item = this.cache.get(id);
-      if (!item) return false;
+      if (!item || item.status !== 'PENDING') return false;
+      if (this.isExpired(item)) {
+        this.cache.delete(id);
+        return false;
+      }
       item.status = status;
       item.expiresAt = new Date(Date.now() + this.ttlMs).toISOString();
       return true;

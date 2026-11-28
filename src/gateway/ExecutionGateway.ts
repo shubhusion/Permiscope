@@ -205,6 +205,16 @@ export class ExecutionGateway {
       }
     }
 
+    // A granted approval authorizes exactly one governed action. Dry runs do
+    // not execute, so they must not consume the human's decision.
+    if (!dryRun && reasonCode === 'APPROVAL_GRANTED') {
+      await this.approvalCache.consumeApproval(
+        identity,
+        governedAction.actionName,
+        governedAction.parameters,
+      );
+    }
+
     const shadow = decision === 'BLOCK' && this.shadowMode;
     if (shadow) decision = 'SHADOW_BLOCK';
 

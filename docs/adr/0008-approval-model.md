@@ -2,6 +2,9 @@
 
 - Status: Accepted
 - Date: 2026-11-28
+- Note: the reuse consequence below was superseded by
+  [ADR-0022](./0022-single-use-approvals.md); approvals are now single-use and
+  pending requests expire.
 
 ## Context
 

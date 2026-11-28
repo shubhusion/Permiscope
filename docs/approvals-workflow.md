@@ -10,8 +10,10 @@ When a policy scope specifies `REQUIRE_APPROVAL`, the action is paused until a h
 
 ![Approval lifecycle](./assets/approval-lifecycle.svg)
 
-A cached approval can skip the wait entirely. Both rejection and expiry (or a gateway
-timeout with no TTY) end in a fail-closed `BLOCK`.
+A cached approval can skip the wait once: it is consumed by the governed action it
+authorized. Both rejection and expiry (or a gateway timeout with no TTY) end in a
+fail-closed `BLOCK`. Pending requests expire too, so stale queue entries cannot be
+approved later.
 
 ## Approval Request Structure
 
@@ -70,8 +72,8 @@ The web dashboard allows managing approvals remotely:
 
 | Behavior | Description |
 |----------|-------------|
-| **Auto-expiration** | Approvals and rejections both expire after TTL (default: 1 hour) |
-| **Reuse** | Same action from the same principal reuses an unexpired approval |
+| **Auto-expiration** | Pending requests, approvals and rejections all expire after TTL (default: 1 hour) |
+| **Reuse** | Approvals are single-use: one grant authorizes one governed action ([ADR-0022](./adr/0022-single-use-approvals.md)) |
 | **No pre-approval** | `approve()` only works on an existing `PENDING` request |
 | **Revocation** | Dashboard can revoke approvals |
 | **Corrupt cache** | Parsed as empty (fail closed), never treated as allow-all |

@@ -25,7 +25,7 @@ describe('approval boundary', () => {
 
   beforeEach(() => {
     base = fs.mkdtempSync(path.join(os.tmpdir(), 'permiscope-approval-'));
-    cache = new ApprovalCache(base, 60);
+    cache = new ApprovalCache(base, 60_000);
     logger = new AuditLogger(base);
     engine = new PolicyEngine({
       scopes: [{ actionName: 'sensitive', decision: 'REQUIRE_APPROVAL' }],
