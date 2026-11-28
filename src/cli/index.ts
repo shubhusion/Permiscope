@@ -5,6 +5,35 @@ import { createAgent } from '../index';
 import { AuditLogger } from '../logging/AuditLogger';
 import { defaultPolicy } from '../defaults/defaultPolicy';
 
+/**
+ * Verification is read-only: never construct a logger against a path that does
+ * not exist, and treat flag-like arguments as usage errors rather than files.
+ */
+export function resolveVerifyTarget(raw: string | undefined): {
+  target: string;
+  label: string;
+  loggerOptions: { segmented: boolean; logDir?: string; logPath?: string };
+} {
+  if (raw?.startsWith('-')) {
+    throw new Error('Usage: permiscope verify [audit.log|audit-directory|manifest.json]');
+  }
+  const target = path.resolve(raw ?? './logs/audit.log');
+  if (!fs.existsSync(target)) throw new Error(`Audit target not found: ${target}`);
+  const isDirectory = fs.statSync(target).isDirectory();
+  const segmented = isDirectory || path.basename(target) === 'manifest.json';
+  if (segmented) {
+    const manifest = isDirectory ? path.join(target, 'manifest.json') : target;
+    if (!fs.existsSync(manifest)) throw new Error(`Segment manifest not found: ${manifest}`);
+  }
+  return {
+    target,
+    label: isDirectory ? path.join(target, 'manifest.json') : target,
+    loggerOptions: segmented
+      ? { segmented: true, logDir: isDirectory ? target : path.dirname(target) }
+      : { segmented: false, logPath: target },
+  };
+}
+
 async function runDemo() {
   // Import dynamically or just move logic here to avoid circularity if index.ts exports createAgent
   // Actually src/index.ts imports this file? No, it imports Adapter.
@@ -89,16 +118,16 @@ async function main() {
   }
 
   if (args[0] === 'verify') {
-    const target = path.resolve(args[1] || './logs/audit.log');
-    const isDirectory = fs.existsSync(target) && fs.statSync(target).isDirectory();
-    const segmented = isDirectory || path.basename(target) === 'manifest.json';
-    const logger = new AuditLogger(path.dirname(target), false, {
-      segmented,
-      ...(segmented
-        ? { logDir: isDirectory ? target : path.dirname(target) }
-        : { logPath: target }),
-    });
-    const label = isDirectory ? path.join(target, 'manifest.json') : target;
+    let resolved;
+    try {
+      resolved = resolveVerifyTarget(args[1]);
+    } catch (error: any) {
+      console.error(`❌ ${error.message}`);
+      process.exit(2);
+      return;
+    }
+    const logger = new AuditLogger(path.dirname(resolved.target), false, resolved.loggerOptions);
+    const label = resolved.label;
     const result = logger.verifyChain();
     if (result.valid) {
       console.log(`✅ Audit chain valid: ${label}`);

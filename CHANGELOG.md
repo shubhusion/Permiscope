@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Segmented audit recovery reconciles a head that is ahead of the manifest after a crash; migration writes atomically, refuses partial targets and honors the environment key ring; `permiscope verify` is read-only and rejects flag-like targets (#117).
 - The public demo no longer fabricates results: per-category eval counts come from real failures and the audit chain is verified before the fixture is generated. `eval:fixture` and `fixture:web` now run in CI with a drift gate; host-level shadow mode is used for the rogue-agent scenario (#113).
 
 ### Changed
