@@ -1,6 +1,6 @@
 # Architecture
 
-Permiscope is a **mediated execution layer** that sits between an external system (agent, script, or workflow) and real-world resources. Every action an external system wants to perform must pass through Permiscope's secure gateway.
+Permiscope is a **mediated execution layer** that sits between an external system (agent, script, or workflow) and real-world resources. Every action an external system wants to perform must pass through Permiscope's secure gateway. This is cooperative governance, not a sandbox ([ADR-0001](./adr/0001-cooperative-governance-boundary.md)); the reasons behind each design choice are recorded in the [ADR index](./adr/README.md).
 
 ## Overview
 
