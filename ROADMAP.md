@@ -71,6 +71,7 @@ These are on `main` but not yet released.
 | #117 | Segmented audit crash recovery, atomic migration and read-only verify |
 | #119 | Project landing page at the site root |
 | #121 | Refreshed contributor and security onboarding |
+| #123 | Native Claude Code PreToolUse hook ([ADR-0021](./docs/adr/0021-native-claude-hook.md)) |
 
 ## Next
 

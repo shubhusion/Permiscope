@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `permiscope hook` maps Claude Code PreToolUse calls to the existing policy engine, returning `allow`/`deny`/`ask` with fail-closed behavior for unknown tools and malformed input. See [ADR-0021](./docs/adr/0021-native-claude-hook.md) and [hooks docs](./docs/hooks.md) (#123).
 - Tailored bug/feature issue templates, an issue-template config, and a first-contribution path in `CONTRIBUTING.md`; refreshed PR checklist, security policy and README contributor links (#121).
 - A project landing page at the site root with live eval/chain figures, quick start and links to the repository, npm package and docs. The console moves to `#/console/*`; older hashes keep working (#119).
 
