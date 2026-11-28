@@ -90,7 +90,8 @@ function redactResult(result: any, allowed: Set<string>): any {
   return out;
 }
 
-function envKeyRing(): Record<string, string> {
+/** Parses the environment key ring; shared with the migration CLI. */
+export function readEnvKeyRing(): Record<string, string> {
   try {
     const parsed: unknown = JSON.parse(process.env.PERMISCOPE_AUDIT_KEY_RING || '{}');
     return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
@@ -137,7 +138,7 @@ export class AuditLogger {
     this.headPath = `${this.logPath}.head`;
     this.strictMode = strictMode;
     this.keyId = options.keyId ?? process.env.PERMISCOPE_AUDIT_KEY_ID ?? 'default';
-    this.keyRing = new Map(Object.entries(options.keyRing ?? envKeyRing()));
+    this.keyRing = new Map(Object.entries(options.keyRing ?? readEnvKeyRing()));
     this.allowedOutputKeys = new Set(options.allowedOutputKeys ?? []);
     this.secret =
       options.secret ?? this.keyRing.get(this.keyId) ?? process.env.PERMISCOPE_AUDIT_SECRET ?? null;
@@ -165,7 +166,8 @@ export class AuditLogger {
       if (!fs.existsSync(this.manifestPath)) {
         writeAtomic(this.manifestPath, this.newManifest(1, 0, GENESIS));
       }
-      this.lastHash = this.readManifest().lastHash;
+      const manifest = this.recoverSegmentedManifest(this.readManifest());
+      this.lastHash = manifest.lastHash;
     } else {
       if (!fs.existsSync(this.logPath)) fs.writeFileSync(this.logPath, '');
       this.lastHash = this.recoverHead();
@@ -199,6 +201,43 @@ export class AuditLogger {
     const unsigned = { ...record } as Record<string, unknown>;
     delete unsigned.signature;
     return createHmac('sha256', secret).update(JSON.stringify(unsigned)).digest('hex');
+  }
+
+  /**
+   * A crash between the head write and the manifest write leaves the log and
+   * head ahead of the manifest. Reconcile from the head when the entries are
+   * actually present; otherwise leave verification to report the inconsistency.
+   */
+  private recoverSegmentedManifest(manifest: AuditManifest): AuditManifest {
+    const paths = segmentPaths(this.segmentDir, manifest.activeSegment);
+    if (!fs.existsSync(paths.head) || !fs.existsSync(paths.log)) return manifest;
+
+    let head: SegmentHead;
+    try {
+      head = JSON.parse(fs.readFileSync(paths.head, 'utf-8')) as SegmentHead;
+    } catch {
+      return manifest;
+    }
+    if (
+      typeof head.lastSequence !== 'number' ||
+      typeof head.firstSequence !== 'number' ||
+      typeof head.lastHash !== 'string' ||
+      head.lastSequence <= manifest.lastSequence
+    ) {
+      return manifest;
+    }
+
+    let lineCount = 0;
+    try {
+      lineCount = this.forEachLine(paths.log, () => undefined);
+    } catch {
+      return manifest;
+    }
+    if (lineCount < head.lastSequence - head.firstSequence + 1) return manifest;
+
+    const recovered = this.newManifest(manifest.activeSegment, head.lastSequence, head.lastHash);
+    writeAtomic(this.manifestPath, recovered);
+    return recovered;
   }
 
   private signHead(sequence: number, hash: string): string | undefined {

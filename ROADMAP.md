@@ -68,6 +68,7 @@ These are on `main` but not yet released.
 | #111 | Default command allowlist closes interpreter and network escape ([ADR-0019](./docs/adr/0019-default-command-allowlist.md)) |
 | #113 | Honest demo fixtures with a verified chain and CI drift gate |
 | #115 | Fail-closed dashboard and sidecar defaults ([ADR-0020](./docs/adr/0020-fail-closed-host-defaults.md)) |
+| #117 | Segmented audit crash recovery, atomic migration and read-only verify |
 
 ## Next
 
