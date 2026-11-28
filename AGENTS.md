@@ -21,6 +21,20 @@ with a new record and link the old one.
 5. Update documentation wherever behavior or APIs change. Reconcile `README.md`,
    `CHANGELOG.md`, `docs/` and `ROADMAP.md` in the same PR.
 
+## Branching and tags
+
+Follow [ADR-0018](./docs/adr/0018-branching-and-release-model.md) (GitHub Flow).
+
+- `main` is the only long-lived branch; never commit to it directly.
+- Name work branches `<type>/<issue>-<slug>` using `feat`, `fix`, `docs`, `test`,
+  `refactor`, `perf`, `chore`, `release` or `hotfix`. The issue number must match the one
+  the PR closes.
+- Branch from current `main`; squash-merge only after CI is green.
+- Tag a release only after CI is green on the exact commit **and** the release workflow
+  and config are final. Never move a published tag — release the next version instead.
+- Patch an older minor only after changing the support policy in `SECURITY.md`; then cut
+  `hotfix/vX.Y.Z` from the published tag and merge the fix back to `main`.
+
 ## Verification gates
 
 Run before asking for review:
