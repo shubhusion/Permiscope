@@ -6,12 +6,13 @@ import {
   DecisionExplanation,
 } from '../core/types';
 import safeRegex from 'safe-regex';
-import { parseCommand } from './commandPolicy';
+import { normalizeCommandName, parseCommand } from './commandPolicy';
 import { isPathWithin } from './pathGuard';
 
 export class PolicyEngine {
   private policy: Policy;
   private patternCache = new Map<string, RegExp | null>();
+  private commandPrefixCache = new WeakMap<PermissionScope, string[][]>();
 
   constructor(policy: Policy) {
     this.policy = policy;
@@ -20,6 +21,9 @@ export class PolicyEngine {
     for (const scope of policy.scopes) {
       for (const pattern of scope.blockedCommandPatterns ?? []) {
         this.compilePattern(pattern);
+      }
+      if (scope.allowedCommands !== undefined) {
+        this.getCommandPrefixes(scope);
       }
     }
   }
@@ -124,7 +128,25 @@ export class PolicyEngine {
     }
 
     if (action.actionName === 'run_command') {
-      if (this.isBlockedCommand(action.parameters.command, scope.blockedCommandPatterns)) {
+      const command = action.parameters.command;
+      if (typeof command !== 'string' || command.trim() === '') {
+        return { outcome: 'block', reasonCode: 'GUARDRAIL_COMMAND' };
+      }
+
+      // Parse before either guard. A parse failure fails closed: we cannot
+      // authorize a command whose structure we do not understand.
+      const parsed = parseCommand(command);
+      if (!parsed.ok) {
+        return { outcome: 'block', reasonCode: 'GUARDRAIL_COMMAND' };
+      }
+
+      // The allowlist is checked first so an executable that is not permitted
+      // cannot be re-enabled by a later block-pattern exception.
+      if (scope.allowedCommands !== undefined && !this.matchesAllowedCommand(parsed.argv, scope)) {
+        return { outcome: 'block', reasonCode: 'GUARDRAIL_COMMAND_NOT_ALLOWED' };
+      }
+
+      if (this.matchesBlockedPattern(parsed.argv, scope.blockedCommandPatterns)) {
         return { outcome: 'block', reasonCode: 'GUARDRAIL_COMMAND' };
       }
     }
@@ -156,23 +178,47 @@ export class PolicyEngine {
     return isPathWithin(inputPath, allowedPaths);
   }
 
-  private isBlockedCommand(
-    command: string | undefined,
-    blockedPatterns: string[] | undefined,
-  ): boolean {
+  private matchesBlockedPattern(argv: string[], blockedPatterns: string[] | undefined): boolean {
     if (!blockedPatterns) return false; // No restrictions
-    if (!command) return true;
-
-    // Parse before matching. A parse failure fails closed: we cannot authorize
-    // a command whose structure we do not understand.
-    const parsed = parseCommand(command);
-    if (!parsed.ok) return true;
-
-    const normalized = parsed.argv.join(' ');
+    const normalized = argv.join(' ');
     for (const pattern of blockedPatterns) {
       if (this.getPattern(pattern).test(normalized)) return true;
     }
     return false;
+  }
+
+  /**
+   * Compile the allowlist prefixes once per scope. Invalid entries throw at
+   * construction, matching the fail-closed regex behavior.
+   */
+  private getCommandPrefixes(scope: PermissionScope): string[][] {
+    const cached = this.commandPrefixCache.get(scope);
+    if (cached) return cached;
+
+    const prefixes = (scope.allowedCommands ?? []).map((entry) => {
+      const parsed = parseCommand(entry);
+      if (!parsed.ok) {
+        throw new Error(`Invalid allowedCommands entry "${entry}": ${parsed.reason}`);
+      }
+      return parsed.argv.map((token, index) =>
+        index === 0 ? normalizeCommandName(token) : token.toLowerCase(),
+      );
+    });
+    this.commandPrefixCache.set(scope, prefixes);
+    return prefixes;
+  }
+
+  private matchesAllowedCommand(argv: string[], scope: PermissionScope): boolean {
+    const prefixes = this.getCommandPrefixes(scope);
+    const normalized = argv.map((token, index) =>
+      index === 0 ? normalizeCommandName(token) : token.toLowerCase(),
+    );
+
+    return prefixes.some(
+      (prefix) =>
+        prefix.length <= normalized.length &&
+        prefix.every((token, index) => token === normalized[index]),
+    );
   }
 
   private compilePattern(pattern: string): RegExp {

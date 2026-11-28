@@ -3,11 +3,30 @@ import { parse } from 'shell-quote';
 export type CommandParseResult = { ok: true; argv: string[] } | { ok: false; reason: string };
 
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'cmd', 'cmd.exe', 'powershell', 'pwsh']);
-const SHELL_COMMAND_FLAGS = new Set(['-c', '/c', '--command', '-command']);
+// Every flag that makes a shell run a caller-supplied string. The comparison is
+// case-insensitive, so `-Command` and `-COMMAND` are both covered.
+const SHELL_COMMAND_FLAGS = new Set([
+  '-c',
+  '/c',
+  '/k',
+  '/r',
+  '--command',
+  '-command',
+  '-encodedcommand',
+]);
 
 function basename(value: string): string {
   const parts = value.split(/[\\/]/);
   return parts[parts.length - 1].toLowerCase();
+}
+
+/**
+ * Normalize an executable name for allowlist comparison: basename, lowercase,
+ * and no Windows launcher extension. `C:\tools\Git.EXE` and `git` both become
+ * `git`; the actual spawn still uses the original argv.
+ */
+export function normalizeCommandName(value: string): string {
+  return basename(value).replace(/\.(exe|cmd|bat)$/i, '');
 }
 
 /**
@@ -50,7 +69,10 @@ export function parseCommand(command: string): CommandParseResult {
     return { ok: false, reason: 'empty command' };
   }
 
-  if (SHELLS.has(basename(argv[0])) && argv.slice(1).some((arg) => SHELL_COMMAND_FLAGS.has(arg))) {
+  if (
+    SHELLS.has(normalizeCommandName(argv[0])) &&
+    argv.slice(1).some((arg) => SHELL_COMMAND_FLAGS.has(arg.toLowerCase()))
+  ) {
     return { ok: false, reason: 'nested shells are not allowed' };
   }
 

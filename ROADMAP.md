@@ -63,6 +63,9 @@ These are on `main` but not yet released.
 | #101 | ADR set and `AGENTS.md` working rules |
 | #103 | Streaming audit chain verification |
 | #105 | Segmented audit logs, signed segment heads and migration CLI ([ADR-0017](./docs/adr/0017-segmented-audit-log.md)) |
+| #107 | Roadmap reconciled with v1.1.0/v1.2.0 releases |
+| #109 | Explicit branching, tagging and release rules ([ADR-0018](./docs/adr/0018-branching-and-release-model.md)) |
+| #111 | Default command allowlist closes interpreter and network escape ([ADR-0019](./docs/adr/0019-default-command-allowlist.md)) |
 
 ## Next
 

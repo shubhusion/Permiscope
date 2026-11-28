@@ -16,6 +16,7 @@ v1.1.0 introduced deliberate fail-closed behavior changes. Review these before u
 | Credentials are no longer an `Action` field | Remove `token` from constructed actions. Supply it via `withRequestContext({ token }, () => ...)` from `permiscope` (or rely on the sidecar, which does this for you). `verifiedPrincipalProvider` reads the token from context. |
 | `validator: false` skips a scope rather than denying | If you used `validator` as a deny rule, replace it with `guard` (false denies). Use `when` for applicability (false skips). The legacy field keeps its old behavior, so no immediate change is required for working policies. |
 | Unsafe command regexes now throw at startup | Patterns rejected by `safe-regex` (or with a quantified alternation group) previously logged a warning and were skipped. Replace them with a safe, equivalent pattern. |
+| The default `run_command` policy is an executable allowlist | `defaultPolicy` now allows only `echo`, `pwd`, `git status`, `git diff`, `git log`, `git show`, `git rev-parse` and `npm test`. Add an `allowedCommands` list to your own scope for anything else, or provide your own policy. `undefined` keeps the old unrestricted behavior for custom policies. See [ADR-0019](./adr/0019-default-command-allowlist.md). |
 | Segmented audit storage is opt-in | No change required. To adopt it, set `AuditLoggerOptions.segmented` and migrate existing logs with `permiscope audit migrate`. Legacy single-file logs keep verifying. |
 
 Additive APIs introduced after 1.1.0 (`evaluateDetailed`, budgets, postconditions,

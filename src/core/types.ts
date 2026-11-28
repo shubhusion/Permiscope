@@ -24,6 +24,13 @@ export interface PermissionScope {
   decision: PermissionDecision;
   // Basic guardrails
   allowedPaths?: string[];
+  /**
+   * Executable allowlist for `run_command`. Each entry is a shell-like prefix
+   * parsed without a shell, e.g. `"git status"` or `"npm test"`. The parsed
+   * action argv must start with one entry. An explicitly empty list denies all
+   * commands; `undefined` leaves the executable unrestricted.
+   */
+  allowedCommands?: string[];
   blockedCommandPatterns?: string[]; // regex strings
   // Dynamic Policy-as-Code
   /** Predicate for scope applicability: false skips this scope. */

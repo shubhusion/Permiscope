@@ -116,9 +116,10 @@ The action remains pending until approved or rejected. The agent may timeout wai
 
 1. No matching scope → Default deny
 2. Path outside `allowedPaths`
-3. Command matches `blockedCommandPatterns`
-4. Validator returned false
-5. Validator threw an error
+3. Command outside `allowedCommands`
+4. Command matches `blockedCommandPatterns`
+5. Validator returned false
+6. Validator threw an error
 
 ### Why isn't my validator running?
 
