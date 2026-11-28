@@ -165,9 +165,10 @@ Permiscope allows you to wrap agent commands safely:
 The React governance console adds an eval scoreboard, chain verification panel, and
 a reconstructed rogue-agent scenario. Run it locally with `npm run dev:web`.
 
-**[Live demo →](https://shubhusion.github.io/Permiscope/)** — read-only, fixture-backed,
-deployed on every push to `main`. See [hosting docs](./docs/hosting.md) for local and
-Cloudflare Pages setup.
+**[Project site →](https://shubhusion.github.io/Permiscope/)** opens the landing page;
+**[Live console →](https://shubhusion.github.io/Permiscope/#/console/overview)** opens the
+read-only, fixture-backed console. Both are deployed on every push to `main`. See
+[hosting docs](./docs/hosting.md) for local and Cloudflare Pages setup.
 
 ---
 

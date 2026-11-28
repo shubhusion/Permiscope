@@ -14,7 +14,8 @@ type Tab = (typeof TABS)[number];
 
 function useHashTab(): [Tab, (tab: Tab) => void] {
   const read = (): Tab => {
-    const value = window.location.hash.replace('#/', '') as Tab;
+    // Both #/console/logs (current) and legacy #/logs hashes open the console.
+    const value = window.location.hash.replace(/^#\/(console\/)?/, '') as Tab;
     return TABS.includes(value) ? value : 'overview';
   };
   const [tab, setTabState] = useState<Tab>(read);
@@ -23,7 +24,7 @@ function useHashTab(): [Tab, (tab: Tab) => void] {
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
-  return [tab, (next: Tab) => { window.location.hash = `#/${next}`; }];
+  return [tab, (next: Tab) => { window.location.hash = `#/console/${next}`; }];
 }
 
 function Ttl({ approval }: { approval: ApprovalView }) {
@@ -364,7 +365,7 @@ function Scenario({ steps }: { steps: DashboardData['scenario'] }) {
   );
 }
 
-export default function App() {
+export function ConsoleApp() {
   const [tab, selectTab] = useHashTab();
   const [source] = useState<DashboardDataSource>(() => (DEMO ? new FixtureDataSource() : new HttpDataSource()));
   const [data, setData] = useState<DashboardData | null>(null);
